@@ -1,7 +1,12 @@
 package moscow.xaclient.utility.sounds;
 
-import java.io.File;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -17,45 +22,47 @@ import javax.sound.sampled.BooleanControl;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.FloatControl;
 import moscow.xaclient.XaClient;
-import moscow.xaclient.systems.modules.impl.BaseModule;
 import moscow.xaclient.systems.setting.settings.ModeSetting;
+import net.minecraft.resource.Resource;
 
 public final class CombatSoundLibrary {
    public static final SoundEntry[] HIT_SOUNDS = new SoundEntry[]{
-      new SoundEntry("Bell", "bell.wav"),
-      new SoundEntry("Bonk", "bonk.wav"),
-      new SoundEntry("Bubble", "bubble.wav"),
-      new SoundEntry("Hit 1", "hit1.wav"),
-      new SoundEntry("Hit 2", "hit2.wav"),
-      new SoundEntry("Hit 3", "hit3.wav"),
-      new SoundEntry("Pop", "pop.wav"),
-      new SoundEntry("Voice 1", "moan1.wav"),
-      new SoundEntry("Voice 2", "moan2.wav"),
-      new SoundEntry("Voice 3", "moan3.wav"),
-      new SoundEntry("Voice 4", "moan4.wav"),
-      new SoundEntry("Uwu", "uwu.wav"),
-      new SoundEntry("Anime Short", "AnimeFemaleShort(Hitsound).mp3"),
-      new SoundEntry("COD Hitmarker", "COD_Hitmarker(Hitsound).mp3"),
-      new SoundEntry("Headshot Spotted", "HeadshotSpotted1(Hitsound).mp3"),
-      new SoundEntry("Job Done", "JobDone(Hitsound).mp3"),
-      new SoundEntry("Knob Click", "Knob(Hitsound).mp3"),
-      new SoundEntry("Light", "Light(Hitsound).mp3"),
-      new SoundEntry("Oreo Chime", "OreoChime(Hitsound).mp3"),
-      new SoundEntry("Chock Pro", "TheRevez5ChockPro(Hitsound).mp3"),
-      new SoundEntry("Chock Pro Advanced", "TheRevez6ChockProAdvanced(Hitsound).mp3"),
-      new SoundEntry("Yoshi Tongue", "YoshiTongueShort(Hitsound).mp3")
+      new SoundEntry("Bell", "combat/hit/bell.wav"),
+      new SoundEntry("Bonk", "combat/hit/bonk.wav"),
+      new SoundEntry("Bubble", "combat/hit/bubble.wav"),
+      new SoundEntry("Hit 1", "combat/hit/hit1.wav"),
+      new SoundEntry("Hit 2", "combat/hit/hit2.wav"),
+      new SoundEntry("Hit 3", "combat/hit/hit3.wav"),
+      new SoundEntry("Pop", "combat/hit/pop.wav"),
+      new SoundEntry("Voice 1", "combat/hit/moan1.wav"),
+      new SoundEntry("Voice 2", "combat/hit/moan2.wav"),
+      new SoundEntry("Voice 3", "combat/hit/moan3.wav"),
+      new SoundEntry("Voice 4", "combat/hit/moan4.wav"),
+      new SoundEntry("Uwu", "combat/hit/uwu.wav"),
+      new SoundEntry("Anime Short", "combat/hit/anime_female_short.mp3"),
+      new SoundEntry("COD Hitmarker", "combat/hit/cod_hitmarker.mp3"),
+      new SoundEntry("Headshot Spotted", "combat/hit/headshot_spotted.mp3"),
+      new SoundEntry("Job Done", "combat/hit/job_done.mp3"),
+      new SoundEntry("Knob Click", "combat/hit/knob.mp3"),
+      new SoundEntry("Light", "combat/hit/light.mp3"),
+      new SoundEntry("Oreo Chime", "combat/hit/oreo_chime.mp3"),
+      new SoundEntry("Chock Pro", "combat/hit/chock_pro.mp3"),
+      new SoundEntry("Chock Pro Advanced", "combat/hit/chock_pro_advanced.mp3"),
+      new SoundEntry("Yoshi Tongue", "combat/hit/yoshi_tongue.mp3"),
+      new SoundEntry("Camera", "combat/hit/camera.mp3")
    };
    public static final SoundEntry[] KILL_SOUNDS = new SoundEntry[]{
-      new SoundEntry("Bell", "bell.wav"),
-      new SoundEntry("Bonk", "bonk.wav"),
-      new SoundEntry("Pop", "pop.wav"),
-      new SoundEntry("Anime Short", "killsound/AnimeFemaleShort(Hitsound).mp3"),
-      new SoundEntry("Mario Coin", "killsound/MarioCoin(Hitsound).mp3"),
-      new SoundEntry("Microwave Bell", "killsound/MicrowaveShortBell1(Hitsound).mp3"),
-      new SoundEntry("Steam Message", "killsound/SteamMessageEarrape(Hitsound).mp3"),
-      new SoundEntry("Count Dot", "killsound/TheRevez1CountDotShort(Hitsound).mp3"),
-      new SoundEntry("Money", "killsound/TheRevez2MoneY(Hitsound).mp3"),
-      new SoundEntry("Yamete", "killsound/YameteAnimeFemale(Hitsound).mp3")
+      new SoundEntry("Bell", "combat/hit/bell.wav"),
+      new SoundEntry("Bonk", "combat/hit/bonk.wav"),
+      new SoundEntry("Pop", "combat/hit/pop.wav"),
+      new SoundEntry("Anime Short", "combat/kill/anime_female_short.mp3"),
+      new SoundEntry("Mario Coin", "combat/kill/mario_coin.mp3"),
+      new SoundEntry("Microwave Bell", "combat/kill/microwave_bell.mp3"),
+      new SoundEntry("Steam Message", "combat/kill/steam_message.mp3"),
+      new SoundEntry("Count Dot", "combat/kill/count_dot.mp3"),
+      new SoundEntry("Money", "combat/kill/money.mp3"),
+      new SoundEntry("Yamete", "combat/kill/yamete.mp3"),
+      new SoundEntry("Sosat", "combat/kill/sosat.mp3")
    };
    private static final Random RANDOM = new Random();
    private static final Set<String> WARNED = new HashSet<>();
@@ -102,37 +109,36 @@ public final class CombatSoundLibrary {
          return;
       }
 
-      File file = resolve(entry.relativePath());
-      if (file == null || !file.exists()) {
-         warnOnce("missing:" + entry.relativePath(), "Combat sound file not found: " + entry.relativePath());
+      byte[] soundData = readAsset(entry.relativePath());
+      if (soundData == null || soundData.length == 0) {
          return;
       }
 
       float safeVolume = Math.max(0.0F, Math.min(3.0F, volume));
-      SOUND_EXECUTOR.execute(() -> playOnSoundThread(file, entry.relativePath(), safeVolume));
+      SOUND_EXECUTOR.execute(() -> playOnSoundThread(soundData, entry.relativePath(), safeVolume));
    }
 
-   private static void playOnSoundThread(File file, String relativePath, float volume) {
+   private static void playOnSoundThread(byte[] soundData, String relativePath, float volume) {
       if (relativePath.toLowerCase().endsWith(".mp3")) {
-         playMp3(file, volume);
+         playMp3(soundData, relativePath, volume);
       } else {
-         playSampled(file, volume);
+         playSampled(soundData, relativePath, volume);
       }
    }
 
-   private static void playSampled(File file, float volume) {
-      try (AudioInputStream stream = AudioSystem.getAudioInputStream(file)) {
+   private static void playSampled(byte[] soundData, String relativePath, float volume) {
+      try (AudioInputStream stream = AudioSystem.getAudioInputStream(new BufferedInputStream(new ByteArrayInputStream(soundData)))) {
          playStream(stream, volume);
       } catch (Exception exception) {
-         warnOnce(file.getAbsolutePath(), "Unsupported combat sound format: " + file.getName());
+         warnOnce("unsupported:" + relativePath, "Unsupported combat sound format: " + relativePath);
       }
    }
 
-   private static void playMp3(File file, float volume) {
-      try (java.io.BufferedInputStream input = new java.io.BufferedInputStream(new java.io.FileInputStream(file))) {
+   private static void playMp3(byte[] soundData, String relativePath, float volume) {
+      try (BufferedInputStream input = new BufferedInputStream(new ByteArrayInputStream(soundData))) {
          Bitstream bitstream = new Bitstream(input);
          Decoder decoder = new Decoder();
-         java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+         ByteArrayOutputStream output = new ByteArrayOutputStream();
          int sampleRate = 44100;
          int channels = 2;
 
@@ -159,11 +165,11 @@ public final class CombatSoundLibrary {
 
          byte[] pcm = output.toByteArray();
          AudioFormat format = new AudioFormat(sampleRate, 16, channels, true, false);
-         try (AudioInputStream stream = new AudioInputStream(new java.io.ByteArrayInputStream(pcm), format, pcm.length / format.getFrameSize())) {
+         try (AudioInputStream stream = new AudioInputStream(new ByteArrayInputStream(pcm), format, pcm.length / format.getFrameSize())) {
             playStream(stream, volume);
          }
       } catch (Exception exception) {
-         warnOnce(file.getAbsolutePath(), "Unsupported combat sound format: " + file.getName());
+         warnOnce("unsupported:" + relativePath, "Unsupported combat sound format: " + relativePath);
       }
    }
 
@@ -198,20 +204,21 @@ public final class CombatSoundLibrary {
       return path.endsWith(".wav") || path.endsWith(".mp3");
    }
 
-   private static File resolve(String relativePath) {
-      File[] candidates = new File[]{
-         new File("hitsound and killsounds", relativePath),
-         new File(XaClient.mc.runDirectory, "hitsound and killsounds/" + relativePath),
-         new File(XaClient.mc.runDirectory.getParentFile() == null ? XaClient.mc.runDirectory : XaClient.mc.runDirectory.getParentFile(), "hitsound and killsounds/" + relativePath)
-      };
-
-      for (File candidate : candidates) {
-         if (candidate.exists()) {
-            return candidate;
+   private static byte[] readAsset(String relativePath) {
+      try {
+         Optional<Resource> resource = XaClient.mc.getResourceManager().getResource(XaClient.id("sounds/" + relativePath));
+         if (resource.isEmpty()) {
+            warnOnce("missing:" + relativePath, "Combat sound asset not found: " + relativePath);
+            return null;
          }
-      }
 
-      return candidates[0];
+         try (InputStream input = resource.get().getInputStream()) {
+            return input.readAllBytes();
+         }
+      } catch (IOException exception) {
+         warnOnce("read:" + relativePath, "Failed to read combat sound asset: " + relativePath);
+         return null;
+      }
    }
 
    private static void warnOnce(String key, String message) {

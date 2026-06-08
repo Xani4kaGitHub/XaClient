@@ -1,29 +1,58 @@
-# build
-build/
+# Gradle / Java
 .gradle/
+build/
 out/
+bin/
 *.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
 
-# IDE
+# Fabric / Loom runtime
+run/
+.fabric/
+
+# IDEs
 .idea/
 *.iml
+*.ipr
+*.iws
 .vscode/
 .settings/
 .classpath
 .project
 
-# loom / minecraft run
-run/
-.fabric/
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# чужой исходник — не публикуем
-СУРС-ДРУГОГО-КЛИЕНТА/
+# Logs and crash dumps
+*.log
+*.log.gz
+logs/
+crash-reports/
+debug/
 
-# служебные / не для публикации
-.claude/
+# Local launchers / generated scripts
 run.bat11
 _*.ps1
+run.bat
+XaClient.bat
+release.bat
+
+# Local client data
+proxy/
 *.tok
 
-# прочее
-*.log
+# External / copied local resources
+hitsound and killsounds/
+СУРС-ДРУГОГО-КЛИЕНТА/
+
+# Codex / Claude local state
+.claude/
+.codex/
+.agents/
