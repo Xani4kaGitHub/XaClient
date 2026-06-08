@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.Generated;
@@ -35,8 +36,8 @@ public class ConfigManager {
          File configDir = new File(FileManager.DIRECTORY, "configs");
          String[] commands = new String[]{"explorer", configDir.getAbsolutePath()};
          Runtime.getRuntime().exec(commands);
-      } catch (Exception var3) {
-         XaClient.LOGGER.error("Не удалось открыть папку с конфигами: {}", var3.getMessage());
+      } catch (Exception exception) {
+         XaClient.LOGGER.error("Failed to open configs directory: {}", exception.getMessage());
       }
    }
 
@@ -44,18 +45,20 @@ public class ConfigManager {
       if (name != null) {
          this.refresh();
          ConfigFile config = new ConfigFile(name);
-         if (name.equals("autosave")) {
+         if (config.getFileName().equals("autosave")) {
             config.load();
          }
 
          config.save();
-         this.configFiles.add(config);
+         if (this.getConfig(config.getFileName()) == null) {
+            this.configFiles.add(config);
+         }
       }
    }
 
    public void listConfigs() {
       this.refresh();
-      MessageUtility.info(Text.of("Список конфигов:"));
+      MessageUtility.info(Text.of("Configs:"));
 
       for (ConfigFile configFile : this.configFiles) {
          int idx = this.configFiles.indexOf(configFile) + 1;
@@ -69,21 +72,30 @@ public class ConfigManager {
       if (!Files.exists(configPath)) {
          try {
             Files.createDirectories(configPath);
-         } catch (IOException var5) {
-            XaClient.LOGGER.error("Не удалось создать директорию конфигов: {}", var5.getMessage());
+         } catch (IOException exception) {
+            XaClient.LOGGER.error("Failed to create configs directory: {}", exception.getMessage());
          }
-      } else {
-         try (Stream<Path> stream = Files.list(configPath)) {
-            stream.filter(x$0 -> Files.isRegularFile(x$0)).filter(path -> path.toString().endsWith(".rock")).forEach(path -> {
-               String fileName = path.getFileName().toString();
-               String name = fileName.substring(0, fileName.lastIndexOf(46));
-               ConfigFile configFile = new ConfigFile(name);
-               this.configFiles.add(configFile);
-            });
-         } catch (IOException var8) {
-            XaClient.LOGGER.error("Ошибка при сканировании директории конфигов: {}", var8.getMessage());
-         }
+
+         return;
       }
+
+      try (Stream<Path> stream = Files.list(configPath)) {
+         stream.filter(Files::isRegularFile)
+            .filter(path -> FileManager.hasSupportedExtension(path.getFileName().toString()))
+            .sorted(Comparator.comparingInt(this::extensionPriority))
+            .forEach(path -> {
+               String name = FileManager.stripSupportedExtension(path.getFileName().toString());
+               if (this.configFiles.stream().noneMatch(configFile -> configFile.getFileName().equalsIgnoreCase(name))) {
+                  this.configFiles.add(new ConfigFile(name));
+               }
+            });
+      } catch (IOException exception) {
+         XaClient.LOGGER.error("Failed to scan configs directory: {}", exception.getMessage());
+      }
+   }
+
+   private int extensionPriority(Path path) {
+      return path.getFileName().toString().endsWith("." + FileManager.DEFAULT_FILE_TYPE) ? 0 : 1;
    }
 
    public ConfigFile getConfig(String name, boolean rescan) {
@@ -91,7 +103,8 @@ public class ConfigManager {
          this.scanConfigDirectory();
       }
 
-      return this.configFiles.stream().filter(configFile -> configFile.getFileName().equalsIgnoreCase(name)).findFirst().orElse(null);
+      String normalizedName = FileManager.stripSupportedExtension(name);
+      return this.configFiles.stream().filter(configFile -> configFile.getFileName().equalsIgnoreCase(normalizedName)).findFirst().orElse(null);
    }
 
    public ConfigFile getConfig(String name) {

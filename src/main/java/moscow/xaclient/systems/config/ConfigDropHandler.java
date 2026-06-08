@@ -43,23 +43,20 @@ public final class ConfigDropHandler implements IMinecraft {
    private static void handleDrop(String path) {
       try {
          File src = new File(path);
-         if (!src.isFile()) {
+         if (!src.isFile() || !FileManager.hasSupportedExtension(src.getName())) {
             return;
          }
 
-         if (!src.getName().endsWith(".rock")) {
-            return;
-         }
-
+         String name = FileManager.stripSupportedExtension(src.getName());
          File destDir = new File(FileManager.DIRECTORY, "configs");
          if (!destDir.exists() && !destDir.mkdirs()) {
             XaClient.LOGGER.error("Failed to create directory {}", destDir.getAbsolutePath());
             return;
          }
 
-         File dest = new File(destDir, src.getName());
+         File dest = new File(destDir, name + "." + FileManager.DEFAULT_FILE_TYPE);
          Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-         String name = src.getName().substring(0, src.getName().lastIndexOf(46));
+
          ConfigManager manager = XaClient.getInstance().getConfigManager();
          manager.refresh();
          ConfigFile cfg = manager.getConfig(name);
@@ -69,10 +66,10 @@ public final class ConfigDropHandler implements IMinecraft {
          }
 
          cfg.load();
-         MessageUtility.info(Text.of("Конфиг " + name + " загружен"));
+         MessageUtility.info(Text.of("Config " + name + " loaded"));
          XaClient.getInstance().getNotificationManager().addNotification(NotificationType.SUCCESS, Text.translatable("configs.loaded").getString());
-      } catch (Exception var7) {
-         XaClient.LOGGER.error("Failed to load dropped config {}", path, var7);
+      } catch (Exception exception) {
+         XaClient.LOGGER.error("Failed to load dropped config {}", path, exception);
       }
    }
 

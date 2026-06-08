@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.Generated;
@@ -37,18 +38,19 @@ public class SwingPresetManager {
 
       try {
          Runtime.getRuntime().exec(commands);
-      } catch (Exception var3) {
-         XaClient.LOGGER.error("все наебнулось в dir конфиге {}", var3.getMessage());
+      } catch (Exception exception) {
+         XaClient.LOGGER.error("Failed to open swing presets directory: {}", exception.getMessage());
       }
    }
 
    public void createPreset(String name) {
       if (name != null) {
-         if (this.getPreset(name, false) != null) {
-            XaClient.LOGGER.warn("Preset {} already exists", name);
+         String normalizedName = FileManager.stripSupportedExtension(name);
+         if (this.getPreset(normalizedName, false) != null) {
+            XaClient.LOGGER.warn("Preset {} already exists", normalizedName);
          } else {
-            SwingPresetFile preset = new SwingPresetFile(name);
-            if (name.equals("autosave")) {
+            SwingPresetFile preset = new SwingPresetFile(normalizedName);
+            if (normalizedName.equals("autosave")) {
                preset.load();
             }
 
@@ -59,7 +61,7 @@ public class SwingPresetManager {
    }
 
    public void listPresets() {
-      MessageUtility.info(Text.of("Список конфигов:"));
+      MessageUtility.info(Text.of("Swing presets:"));
 
       for (SwingPresetFile swingPresetFile : this.swingPresetFiles) {
          int idx = this.swingPresetFiles.indexOf(swingPresetFile) + 1;
@@ -73,21 +75,30 @@ public class SwingPresetManager {
       if (!Files.exists(presetPath)) {
          try {
             Files.createDirectories(presetPath);
-         } catch (IOException var5) {
-            XaClient.LOGGER.error("Не удалось создать директорию пресетов: {}", var5.getMessage());
+         } catch (IOException exception) {
+            XaClient.LOGGER.error("Failed to create swing presets directory: {}", exception.getMessage());
          }
-      } else {
-         try (Stream<Path> stream = Files.list(presetPath)) {
-            stream.filter(x$0 -> Files.isRegularFile(x$0)).filter(path -> path.toString().endsWith(".rock")).forEach(path -> {
-               String fileName = path.getFileName().toString();
-               String name = fileName.substring(0, fileName.lastIndexOf(46));
-               SwingPresetFile swingPresetFile = new SwingPresetFile(name);
-               this.swingPresetFiles.add(swingPresetFile);
-            });
-         } catch (IOException var8) {
-            XaClient.LOGGER.error("Ошибка при сканировании директории конфигов: {}", var8.getMessage());
-         }
+
+         return;
       }
+
+      try (Stream<Path> stream = Files.list(presetPath)) {
+         stream.filter(Files::isRegularFile)
+            .filter(path -> FileManager.hasSupportedExtension(path.getFileName().toString()))
+            .sorted(Comparator.comparingInt(this::extensionPriority))
+            .forEach(path -> {
+               String name = FileManager.stripSupportedExtension(path.getFileName().toString());
+               if (this.swingPresetFiles.stream().noneMatch(preset -> preset.getFileName().equalsIgnoreCase(name))) {
+                  this.swingPresetFiles.add(new SwingPresetFile(name));
+               }
+            });
+      } catch (IOException exception) {
+         XaClient.LOGGER.error("Failed to scan swing presets directory: {}", exception.getMessage());
+      }
+   }
+
+   private int extensionPriority(Path path) {
+      return path.getFileName().toString().endsWith("." + FileManager.DEFAULT_FILE_TYPE) ? 0 : 1;
    }
 
    public SwingPresetFile getPreset(String name, boolean rescan) {
@@ -95,7 +106,8 @@ public class SwingPresetManager {
          this.scanPresetDirectory();
       }
 
-      return this.swingPresetFiles.stream().filter(swingPresetFile -> swingPresetFile.getFileName().equalsIgnoreCase(name)).findFirst().orElse(null);
+      String normalizedName = FileManager.stripSupportedExtension(name);
+      return this.swingPresetFiles.stream().filter(swingPresetFile -> swingPresetFile.getFileName().equalsIgnoreCase(normalizedName)).findFirst().orElse(null);
    }
 
    public SwingPresetFile getPreset(String name) {

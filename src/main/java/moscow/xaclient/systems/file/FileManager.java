@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Generated;
@@ -17,7 +18,8 @@ import ru.kotopushka.compiler.sdk.annotations.Initialization;
 public class FileManager {
    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
    public static final File DIRECTORY = new File(MinecraftClient.getInstance().runDirectory, "XaClient");
-   public static final String DEFAULT_FILE_TYPE = "rock";
+   public static final String DEFAULT_FILE_TYPE = "xani";
+   public static final String LEGACY_FILE_TYPE = "rock";
    private final List<ClientFile> clientFiles = new ArrayList<>();
 
    public FileManager() {
@@ -41,7 +43,7 @@ public class FileManager {
 
    public void readFile(ClientFile clientFile) {
       try {
-         if (clientFile.getFile().exists()) {
+         if (clientFile.getReadableFile().exists()) {
             clientFile.read();
          }
       } catch (Exception var3) {
@@ -73,6 +75,30 @@ public class FileManager {
       if (clientFile != null) {
          clientFile.write();
       }
+   }
+
+   public static boolean hasSupportedExtension(String fileName) {
+      String extension = getExtension(fileName);
+      return DEFAULT_FILE_TYPE.equals(extension) || LEGACY_FILE_TYPE.equals(extension);
+   }
+
+   public static String stripSupportedExtension(String fileName) {
+      String name = new File(fileName).getName();
+      String extension = getExtension(name);
+      if (DEFAULT_FILE_TYPE.equals(extension) || LEGACY_FILE_TYPE.equals(extension)) {
+         return name.substring(0, name.length() - extension.length() - 1);
+      }
+
+      return name;
+   }
+
+   private static String getExtension(String fileName) {
+      int dotIndex = fileName.lastIndexOf('.');
+      if (dotIndex < 0 || dotIndex == fileName.length() - 1) {
+         return "";
+      }
+
+      return fileName.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
    }
 
    @Compile

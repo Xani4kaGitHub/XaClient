@@ -7,5 +7,5 @@ import java.lang.annotation.RetentionPolicy;
 public @interface FileInfo {
    String name();
 
-   String fileType() default "rock";
+   String fileType() default "xani";
 }

@@ -26,123 +26,125 @@ import moscow.xaclient.utility.sounds.ClientSounds;
 import net.minecraft.text.Text;
 
 public class ConfigFile implements IMinecraft {
-   private List<Module> modules = XaClient.getInstance().getModuleManager().getModules();
-   private File file;
-   private String fileName;
+   private final List<Module> modules = XaClient.getInstance().getModuleManager().getModules();
+   private final File file;
+   private final File legacyFile;
+   private final String fileName;
 
    public ConfigFile(String fileName) {
-      this.fileName = fileName;
+      this.fileName = FileManager.stripSupportedExtension(fileName);
       File configsFolder = new File(FileManager.DIRECTORY, "configs");
       if (!configsFolder.exists()) {
-         configsFolder.mkdir();
+         configsFolder.mkdirs();
       }
 
-      this.file = new File(configsFolder, fileName + ".%s".formatted("rock"));
+      this.file = new File(configsFolder, this.fileName + "." + FileManager.DEFAULT_FILE_TYPE);
+      this.legacyFile = new File(configsFolder, this.fileName + "." + FileManager.LEGACY_FILE_TYPE);
    }
 
    public void load() {
-      if (!this.file.exists()) {
-         XaClient.LOGGER.warn("Config file not found: {}", this.file.getAbsolutePath());
-      } else {
-         try {
-            try (BufferedReader reader = new BufferedReader(new FileReader(this.file))) {
-               JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
-               if (jsonObject.has("modules")) {
-                  JsonArray modulesArray = jsonObject.getAsJsonArray("modules");
-                  int loadedModules = 0;
+      File readableFile = this.getReadableFile();
+      if (!readableFile.exists()) {
+         XaClient.LOGGER.warn("Config file not found: {}", readableFile.getAbsolutePath());
+         return;
+      }
 
-                  for (JsonElement moduleElement : modulesArray) {
-                     JsonObject moduleObject = moduleElement.getAsJsonObject();
-                     if (moduleObject.has("name")) {
-                        String moduleName = moduleObject.get("name").getAsString();
-                        boolean enabled = moduleObject.has("enabled") && moduleObject.get("enabled").getAsBoolean();
-                        int key = moduleObject.has("key") ? moduleObject.get("key").getAsInt() : 0;
+      try (BufferedReader reader = new BufferedReader(new FileReader(readableFile))) {
+         JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
+         if (!jsonObject.has("modules")) {
+            XaClient.LOGGER.warn("Invalid config format: missing 'modules' array in {}", readableFile.getName());
+            return;
+         }
 
-                        try {
-                           Module module = XaClient.getInstance().getModuleManager().getModule(moduleName);
-                           if (!(module instanceof MenuModule)) {
-                              module.setEnabled(enabled, true);
-                              module.setKey(key);
-                           }
+         JsonArray modulesArray = jsonObject.getAsJsonArray("modules");
+         int loadedModules = 0;
 
-                           if (moduleObject.has("settings")) {
-                              JsonObject settingsObject = moduleObject.getAsJsonObject("settings");
+         for (JsonElement moduleElement : modulesArray) {
+            JsonObject moduleObject = moduleElement.getAsJsonObject();
+            if (!moduleObject.has("name")) {
+               continue;
+            }
 
-                              for (Setting setting : module.getSettings()) {
-                                 if (settingsObject.has(setting.getName())) {
-                                    setting.load(settingsObject.get(setting.getName()));
-                                 }
-                              }
-                           }
+            String moduleName = moduleObject.get("name").getAsString();
+            boolean enabled = moduleObject.has("enabled") && moduleObject.get("enabled").getAsBoolean();
+            int key = moduleObject.has("key") ? moduleObject.get("key").getAsInt() : 0;
 
-                           loadedModules++;
-                        } catch (UnknownModuleException var16) {
-                           XaClient.LOGGER.warn("Module not found during config load: {}", moduleName);
-                        }
-                     }
-                  }
-
-                  ClientSounds.MODULE.play(XaClient.getInstance().getModuleManager().getModule(Sounds.class).getVolume().getCurrentValue(), 1.0F);
-                  XaClient.getInstance().getNotificationManager().addNotification(NotificationType.SUCCESS, Localizator.translate("configs.loaded"));
-                  XaClient.LOGGER.info("Loaded {} modules from config {}", loadedModules, this.fileName);
-                  if (!this.fileName.equals("autosave")) {
-                     XaClient.getInstance().getConfigManager().setCurrent(this);
-                  }
-
-                  return;
+            try {
+               Module module = XaClient.getInstance().getModuleManager().getModule(moduleName);
+               if (!(module instanceof MenuModule)) {
+                  module.setEnabled(enabled, true);
+                  module.setKey(key);
                }
 
-               XaClient.LOGGER.warn("Invalid config format: missing 'modules' array in {}", this.fileName);
+               if (moduleObject.has("settings")) {
+                  JsonObject settingsObject = moduleObject.getAsJsonObject("settings");
+
+                  for (Setting setting : module.getSettings()) {
+                     if (settingsObject.has(setting.getName())) {
+                        setting.load(settingsObject.get(setting.getName()));
+                     }
+                  }
+               }
+
+               loadedModules++;
+            } catch (UnknownModuleException ignored) {
+               XaClient.LOGGER.warn("Module not found during config load: {}", moduleName);
             }
-         } catch (Exception var18) {
-            XaClient.LOGGER.error("Failed to load config file {}: {}", this.fileName, var18.getMessage());
          }
+
+         ClientSounds.MODULE.play(XaClient.getInstance().getModuleManager().getModule(Sounds.class).getVolume().getCurrentValue(), 1.0F);
+         XaClient.getInstance().getNotificationManager().addNotification(NotificationType.SUCCESS, Localizator.translate("configs.loaded"));
+         XaClient.LOGGER.info("Loaded {} modules from config {}", loadedModules, readableFile.getName());
+         if (!this.fileName.equals("autosave")) {
+            XaClient.getInstance().getConfigManager().setCurrent(this);
+         }
+      } catch (Exception exception) {
+         XaClient.LOGGER.error("Failed to load config file {}: {}", readableFile.getName(), exception.getMessage());
       }
    }
 
    public void save() {
       try {
+         File parent = this.file.getParentFile();
+         if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+         }
+
          if (!this.file.exists() && !this.file.createNewFile()) {
             throw new IOException("Failed to create config file: " + this.file.getAbsolutePath());
          }
 
          JsonObject json = new JsonObject();
-         JsonArray modulesJsonArray = this.getModulesJsonArray();
-         json.add("modules", modulesJsonArray);
-         FileWriter fileWriter = new FileWriter(this.file);
+         json.add("modules", this.getModulesJsonArray());
 
-         try {
+         try (FileWriter fileWriter = new FileWriter(this.file)) {
             fileWriter.write(FileManager.GSON.toJson(json));
-         } catch (Throwable var7) {
-            try {
-               fileWriter.close();
-            } catch (Throwable var6) {
-               var7.addSuppressed(var6);
-            }
-
-            throw var7;
          }
 
-         fileWriter.close();
          if (!this.fileName.equals("autosave")) {
             XaClient.getInstance().getConfigManager().setCurrent(this);
          }
 
-         XaClient.LOGGER.info("Successfully saved config " + this.fileName);
-      } catch (IOException var8) {
-         XaClient.LOGGER.error("Failed to save config file", var8);
+         XaClient.LOGGER.info("Successfully saved config {}", this.fileName);
+      } catch (IOException exception) {
+         XaClient.LOGGER.error("Failed to save config file", exception);
       }
    }
 
    public void delete() {
-      if (this.file.exists() && this.file.delete()) {
+      File targetFile = this.getReadableFile();
+      if (targetFile.exists() && targetFile.delete()) {
          XaClient.getInstance().getConfigManager().getConfigFiles().remove(this);
-         MessageUtility.info(Text.of("Конфиг " + this.fileName + " успешно удален"));
-         XaClient.LOGGER.info("Config file deleted: {}", this.file.getAbsolutePath());
+         MessageUtility.info(Text.of("Config " + this.fileName + " deleted"));
+         XaClient.LOGGER.info("Config file deleted: {}", targetFile.getAbsolutePath());
       } else {
-         MessageUtility.error(Text.of("Произошла ошибка при удалении"));
-         XaClient.LOGGER.warn("Failed to delete config file: {}", this.file.getAbsolutePath());
+         MessageUtility.error(Text.of("Failed to delete config"));
+         XaClient.LOGGER.warn("Failed to delete config file: {}", targetFile.getAbsolutePath());
       }
+   }
+
+   public File getReadableFile() {
+      return this.file.exists() ? this.file : this.legacyFile;
    }
 
    private JsonArray getModulesJsonArray() {
@@ -168,6 +170,11 @@ public class ConfigFile implements IMinecraft {
       }
 
       return settingsObject;
+   }
+
+   @Generated
+   public File getFile() {
+      return this.file;
    }
 
    @Generated

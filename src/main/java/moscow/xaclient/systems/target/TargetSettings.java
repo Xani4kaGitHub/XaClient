@@ -2,6 +2,7 @@ package moscow.xaclient.systems.target;
 
 import java.util.Comparator;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import lombok.Generated;
 import moscow.xaclient.XaClient;
 import moscow.xaclient.systems.modules.modules.combat.AntiBot;
@@ -24,6 +25,7 @@ public class TargetSettings implements IMinecraft {
    private boolean targetArmorStands = false;
    private float requiredRange = -1.0F;
    private Comparator<Entity> targetComparator = TargetComparators.DISTANCE;
+   private Predicate<Entity> entityFilter = entity -> true;
 
    public boolean isEntityValid(Entity entity) {
       if (mc.player != null && mc.world != null && entity != null) {
@@ -31,6 +33,8 @@ public class TargetSettings implements IMinecraft {
             if (entity instanceof LivingEntity living && living.isDead()) {
                return false;
             } else if (!this.isWithinRange(entity)) {
+               return false;
+            } else if (!this.entityFilter.test(entity)) {
                return false;
             } else if (entity instanceof ArmorStandEntity) {
                return this.targetArmorStands;
@@ -182,6 +186,11 @@ public class TargetSettings implements IMinecraft {
 
       public TargetSettings.Builder sortByValueReversed(Function<Entity, Double> valueExtractor) {
          this.settings.targetComparator = TargetComparators.byValueReversed(valueExtractor);
+         return this;
+      }
+
+      public TargetSettings.Builder filter(Predicate<Entity> entityFilter) {
+         this.settings.entityFilter = entityFilter == null ? entity -> true : entityFilter;
          return this;
       }
 

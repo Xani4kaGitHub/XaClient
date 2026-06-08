@@ -54,9 +54,23 @@ public class AIAuraV2 extends BaseModule {
    private final SliderSetting aimDistance = new SliderSetting(this, "Aim Distance").min(1.0F).max(8.0F).step(0.1F).currentValue(4.0F);
    private final SliderSetting influence = new SliderSetting(this, "AI Influence").min(0.0F).max(100.0F).step(1.0F).currentValue(88.0F).suffix("%");
    private final SliderSetting missChance = new SliderSetting(this, "Miss Chance").min(0.0F).max(100.0F).step(1.0F).currentValue(0.0F).suffix("%");
-   private final SliderSetting maxYawSpeed = new SliderSetting(this, "Max Yaw Speed").min(8.0F).max(180.0F).step(1.0F).currentValue(120.0F);
-   private final SliderSetting maxPitchSpeed = new SliderSetting(this, "Max Pitch Speed").min(4.0F).max(90.0F).step(1.0F).currentValue(55.0F);
+   private final SliderSetting aimSpeed = new SliderSetting(this, "Aim Speed").min(0.5F).max(2.5F).step(0.05F).currentValue(1.35F).suffix("x");
+   private final SliderSetting maxYawSpeed = new SliderSetting(this, "Max Yaw Speed").min(8.0F).max(260.0F).step(1.0F).currentValue(165.0F);
+   private final SliderSetting maxPitchSpeed = new SliderSetting(this, "Max Pitch Speed").min(4.0F).max(180.0F).step(1.0F).currentValue(95.0F);
    private final SliderSetting targetHold = new SliderSetting(this, "Target Hold").min(0.0F).max(1000.0F).step(25.0F).currentValue(250.0F).suffix("ms");
+   private final SliderSetting criticalChance = new SliderSetting(this, "Critical Chance")
+      .min(0.0F)
+      .max(100.0F)
+      .step(1.0F)
+      .currentValue(75.0F)
+      .suffix("%");
+   private final BooleanSetting microMovement = new BooleanSetting(this, "Micro Movement");
+   private final SliderSetting microMovementAmount = new SliderSetting(this, "Micro Amount", () -> !this.microMovement.isEnabled())
+      .min(0.0F)
+      .max(100.0F)
+      .step(1.0F)
+      .currentValue(35.0F)
+      .suffix("%");
    private final SelectSetting targets = new SelectSetting(this, "targets").min(1);
    private final SelectSetting.Value players = new SelectSetting.Value(this.targets, "players").select();
    private final SelectSetting.Value animals = new SelectSetting.Value(this.targets, "animals");
@@ -89,6 +103,8 @@ public class AIAuraV2 extends BaseModule {
    private long nextAttackDelay = -1L;
    private float yawVelocity;
    private float pitchVelocity;
+   private boolean criticalDecisionReady;
+   private boolean requireCriticalForNextAttack;
    private boolean shield;
 
    private final EventListener<ClientPlayerTickEvent> onPlayerTick = event -> {
@@ -124,7 +140,8 @@ public class AIAuraV2 extends BaseModule {
             .targetInvisibles(this.invisibles.isSelected())
             .targetNakedPlayers(this.nakedPlayers.isSelected())
             .targetFriends(this.friends.isSelected())
-            .requiredRange(this.aimDistance.getCurrentValue());
+            .requiredRange(this.aimDistance.getCurrentValue())
+            .filter(entity -> entity instanceof LivingEntity living && this.canAimAt(living));
          if (this.sortingMode.is(this.healthSorting)) {
             builder.sortBy(TargetComparators.HEALTH);
          } else if (this.sortingMode.is(this.fovSorting)) {
@@ -144,7 +161,32 @@ public class AIAuraV2 extends BaseModule {
          || !target.isAlive()
          || target.isRemoved()
          || !mc.world.hasEntity(target)
+         || !this.canAimAt(target)
          || mc.player.squaredDistanceTo(RotationMath.getNearestPoint(target)) > this.aimDistance.getCurrentValue() * this.aimDistance.getCurrentValue();
+   }
+
+   private boolean canAimAt(LivingEntity target) {
+      if (this.throughWalls.isEnabled()) {
+         return true;
+      }
+
+      if (mc.player == null || mc.world == null || target == null) {
+         return false;
+      }
+
+      Vec3d eyePos = mc.player.getEyePos();
+      Box box = target.getBoundingBox();
+      return this.hasClearPath(eyePos, RotationMath.getNearestPoint(target))
+         || this.hasClearPath(eyePos, target.getEyePos())
+         || this.hasClearPath(eyePos, new Vec3d(box.getCenter().x, box.minY + (box.maxY - box.minY) * 0.55, box.getCenter().z));
+   }
+
+   private boolean hasClearPath(Vec3d start, Vec3d end) {
+      if (start.squaredDistanceTo(end) <= 0.0001) {
+         return true;
+      }
+
+      return mc.world.raycast(new RaycastContext(start, end, ShapeType.COLLIDER, FluidHandling.NONE, mc.player)).getType() != Type.BLOCK;
    }
 
    private Rotation calculateRotation(LivingEntity target) {
@@ -159,13 +201,17 @@ public class AIAuraV2 extends BaseModule {
       int distanceBucket = profile.distanceBucket(distance);
       int angleBucket = profile.angleBucket(Math.abs(yawDelta) + Math.abs(pitchDelta));
       float aiInfluence = MathHelper.clamp(this.influence.getCurrentValue() / 100.0F, 0.0F, 1.0F);
-      float yawLimit = this.lerp(this.maxYawSpeed.getCurrentValue(), profile.yawSpeed(distanceBucket, angleBucket), aiInfluence);
-      float pitchLimit = this.lerp(this.maxPitchSpeed.getCurrentValue(), profile.pitchSpeed(distanceBucket, angleBucket), aiInfluence);
-      float yawAccelerationLimit = this.lerp(this.maxYawSpeed.getCurrentValue(), profile.yawAcceleration(distanceBucket, angleBucket), aiInfluence);
-      float pitchAccelerationLimit = this.lerp(this.maxPitchSpeed.getCurrentValue(), profile.pitchAcceleration(distanceBucket, angleBucket), aiInfluence);
-      float closeScale = distance < 1.35 ? MathHelper.clamp((float)(distance / 1.35), 0.42F, 0.82F) : 1.0F;
-      yawLimit *= closeScale;
-      pitchLimit *= MathHelper.clamp(closeScale, 0.32F, 1.0F);
+      float speedScale = this.aimSpeed.getCurrentValue();
+      float yawLimit = this.lerp(this.maxYawSpeed.getCurrentValue(), profile.yawSpeed(distanceBucket, angleBucket), aiInfluence) * speedScale;
+      float pitchLimit = this.lerp(this.maxPitchSpeed.getCurrentValue(), profile.pitchSpeed(distanceBucket, angleBucket), aiInfluence) * speedScale;
+      float accelerationScale = 0.85F + speedScale * 0.45F;
+      float yawAccelerationLimit = this.lerp(this.maxYawSpeed.getCurrentValue(), profile.yawAcceleration(distanceBucket, angleBucket), aiInfluence) * accelerationScale;
+      float pitchAccelerationLimit = this.lerp(this.maxPitchSpeed.getCurrentValue(), profile.pitchAcceleration(distanceBucket, angleBucket), aiInfluence) * accelerationScale;
+      float closeBoost = distance < 1.45 ? MathHelper.clamp((float)((1.45 - distance) / 1.45), 0.0F, 1.0F) : 0.0F;
+      yawLimit *= 1.0F + closeBoost * 0.35F;
+      pitchLimit *= 1.0F + closeBoost * 0.12F;
+      yawAccelerationLimit *= 1.0F + closeBoost * 0.35F;
+      pitchAccelerationLimit *= 1.0F + closeBoost * 0.18F;
       float wantedYawVelocity = MathHelper.clamp(yawDelta, -yawLimit, yawLimit);
       float wantedPitchVelocity = MathHelper.clamp(pitchDelta, -pitchLimit, pitchLimit);
       this.yawVelocity = this.approach(this.yawVelocity, wantedYawVelocity, yawAccelerationLimit);
@@ -187,9 +233,13 @@ public class AIAuraV2 extends BaseModule {
          this.pitchVelocity = pitchStep;
       }
 
-      float jitterScale = MathHelper.clamp((Math.abs(yawDelta) + Math.abs(pitchDelta) - 1.0F) / 18.0F, 0.0F, 1.0F) * aiInfluence;
+      float microScale = this.getMicroMovementScale();
+      float jitterScale = MathHelper.clamp((Math.abs(yawDelta) + Math.abs(pitchDelta) - 1.0F) / 18.0F, 0.0F, 1.0F) * aiInfluence * microScale;
       float yaw = currentRotation.getYaw() + yawStep + MathUtility.random(-profile.jitterYaw, profile.jitterYaw) * jitterScale;
       float pitch = MathHelper.clamp(currentRotation.getPitch() + pitchStep + MathUtility.random(-profile.jitterPitch, profile.jitterPitch) * jitterScale, -90.0F, 90.0F);
+      if (distance < 1.2) {
+         pitch = MathHelper.clamp(pitch, currentRotation.getPitch() - 18.0F, currentRotation.getPitch() + 22.0F);
+      }
       if (Math.abs(yawDelta) < 0.75F) {
          this.yawVelocity *= 0.35F;
       }
@@ -210,10 +260,11 @@ public class AIAuraV2 extends BaseModule {
             this.pitchVelocity = 0.0F;
          }
 
+         float microScale = this.getMicroMovementScale();
          this.aimOffset = new Vec3d(
-            MathHelper.clamp(0.5 + MathUtility.random(-profile.aimHorizontalSpread, profile.aimHorizontalSpread), 0.18, 0.82),
-            MathHelper.clamp(0.61 + MathUtility.random(-profile.aimVerticalSpread, profile.aimVerticalSpread), 0.34, 0.82),
-            MathHelper.clamp(0.5 + MathUtility.random(-profile.aimHorizontalSpread, profile.aimHorizontalSpread), 0.18, 0.82)
+            MathHelper.clamp(0.5 + MathUtility.random(-profile.aimHorizontalSpread, profile.aimHorizontalSpread) * microScale, 0.18, 0.82),
+            MathHelper.clamp(0.58 + MathUtility.random(-profile.aimVerticalSpread, profile.aimVerticalSpread) * microScale, 0.34, 0.72),
+            MathHelper.clamp(0.5 + MathUtility.random(-profile.aimHorizontalSpread, profile.aimHorizontalSpread) * microScale, 0.18, 0.82)
          );
          this.lastAimTarget = target;
          this.nextAimPointRefreshMs = now + (long)MathUtility.random(profile.aimPointHoldMs * 0.7F, profile.aimPointHoldMs * 1.25F);
@@ -236,11 +287,19 @@ public class AIAuraV2 extends BaseModule {
       double x = box.minX + widthX * this.aimOffset.x;
       double y = box.minY + height * this.aimOffset.y;
       double z = box.minZ + widthZ * this.aimOffset.z;
-      if (mc.player.getBoundingBox().intersects(target.getBoundingBox().expand(0.18))) {
+      double nearestDistance = mc.player.getEyePos().distanceTo(RotationMath.getNearestPoint(target));
+      if (nearestDistance < 1.2 || mc.player.getBoundingBox().intersects(target.getBoundingBox().expand(0.18))) {
          Vec3d nearest = RotationMath.getNearestPoint(target);
-         x += (nearest.x - x) * 0.68;
-         z += (nearest.z - z) * 0.68;
-         y = MathHelper.clamp(mc.player.getEyeY() - 0.18, box.minY + height * 0.32, box.minY + height * 0.66);
+         float closeBlend = nearestDistance < 0.7 ? 0.88F : 0.72F;
+         x += (nearest.x - x) * closeBlend;
+         z += (nearest.z - z) * closeBlend;
+         double closeMinY = Math.max(box.minY + height * 0.32, mc.player.getEyeY() - 0.65);
+         double closeMaxY = Math.min(box.minY + height * 0.64, mc.player.getEyeY() - 0.06);
+         if (closeMaxY > closeMinY) {
+            y = MathHelper.clamp(y, closeMinY, closeMaxY);
+         } else {
+            y = MathHelper.clamp(mc.player.getEyeY() - 0.2, box.minY + height * 0.32, box.minY + height * 0.64);
+         }
       }
 
       return new Vec3d(x, y, z);
@@ -279,7 +338,7 @@ public class AIAuraV2 extends BaseModule {
          return false;
       }
 
-      if (this.onlyCriticals.isEnabled() && !CombatUtility.canPerformCriticalHit(target, true)) {
+      if (this.shouldRequireCriticalForAttack() && !CombatUtility.canPerformCriticalHit(target, true)) {
          return false;
       }
 
@@ -290,11 +349,26 @@ public class AIAuraV2 extends BaseModule {
       AuraAIV2Profile profile = this.aiManager.getActiveProfile();
       if (this.nextAttackDelay < 0L) {
          this.nextAttackDelay = (long)MathHelper.clamp(profile.attackDelayMs * MathUtility.random(0.88, 1.16), 45.0F, 1600.0F);
+         this.criticalDecisionReady = true;
+         this.requireCriticalForNextAttack = MathUtility.random(0.0, 100.0) < this.criticalChance.getCurrentValue();
       }
 
       return CombatUtility.getMace() != null
          ? this.attackTimer.finished(Math.max(420L, this.nextAttackDelay))
          : mc.player.getAttackCooldownProgress(1.5F) > 0.93F && this.attackTimer.finished(this.nextAttackDelay);
+   }
+
+   private boolean shouldRequireCriticalForAttack() {
+      if (!this.onlyCriticals.isEnabled()) {
+         return false;
+      }
+
+      if (!this.criticalDecisionReady) {
+         this.criticalDecisionReady = true;
+         this.requireCriticalForNextAttack = MathUtility.random(0.0, 100.0) < this.criticalChance.getCurrentValue();
+      }
+
+      return this.requireCriticalForNextAttack;
    }
 
    private void attack(LivingEntity target) {
@@ -336,11 +410,14 @@ public class AIAuraV2 extends BaseModule {
 
       this.attackTimer.reset();
       this.nextAttackDelay = -1L;
+      this.criticalDecisionReady = false;
+      this.requireCriticalForNextAttack = false;
    }
 
    private void resetRuntime() {
       this.currentTarget = null;
       XaClient.getInstance().getTargetManager().reset();
+      this.resetAttackState();
       this.resetRotationState();
    }
 
@@ -368,6 +445,16 @@ public class AIAuraV2 extends BaseModule {
       return this.moveCorrectionMode.is(this.directMoveCorrection) ? MoveCorrection.DIRECT : MoveCorrection.NONE;
    }
 
+   private float getMicroMovementScale() {
+      return this.microMovement.isEnabled() ? MathHelper.clamp(this.microMovementAmount.getCurrentValue() / 100.0F, 0.0F, 1.0F) : 0.0F;
+   }
+
+   private void resetAttackState() {
+      this.nextAttackDelay = -1L;
+      this.criticalDecisionReady = false;
+      this.requireCriticalForNextAttack = false;
+   }
+
    private float approach(float current, float target, float maxDelta) {
       return current + MathHelper.clamp(target - current, -maxDelta, maxDelta);
    }
@@ -389,7 +476,7 @@ public class AIAuraV2 extends BaseModule {
       this.currentTarget = null;
       this.targetSwitchTimer.reset();
       this.attackTimer.reset();
-      this.nextAttackDelay = -1L;
+      this.resetAttackState();
       this.aiManager.resetRuntime();
       super.onEnable();
    }

@@ -55,7 +55,7 @@ public class ClientDataFile extends ClientFile implements IMinecraft {
 
    @Override
    public void read() {
-      try (FileReader reader = new FileReader(this.getFile())) {
+      try (FileReader reader = new FileReader(this.getReadableFile())) {
          JsonObject object = (JsonObject)FileManager.GSON.fromJson(reader, JsonObject.class);
          if (object.has("username")) {
             String username = object.get("username").getAsString();
