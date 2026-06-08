@@ -1,0 +1,29 @@
+# build
+build/
+.gradle/
+out/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# loom / minecraft run
+run/
+.fabric/
+
+# чужой исходник — не публикуем
+СУРС-ДРУГОГО-КЛИЕНТА/
+
+# служебные / не для публикации
+.claude/
+run.bat11
+_*.ps1
+*.tok
+
+# прочее
+*.log

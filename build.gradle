@@ -1,0 +1,84 @@
+plugins {
+    id 'fabric-loom' version '1.12.7'
+    id 'maven-publish'
+}
+
+group = 'moscow.xaclient'
+version = '2.0'
+
+base {
+    archivesName = 'xaclient'
+}
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+    maven { url = 'https://repo.viaversion.com/everything/' }
+    maven { url = 'https://maven.lenni0451.net/snapshots/' }
+    maven { url = 'https://repo.opencollab.dev/maven-snapshots/' }
+}
+
+configurations.configureEach {
+    resolutionStrategy.force "de.florianmichael:Classic4J:2.2.2"
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.minecraft_version}+build.8:v2"
+
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    compileOnly "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
+    annotationProcessor "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
+
+    compileOnly "org.projectlombok:lombok:1.18.32"
+    annotationProcessor "org.projectlombok:lombok:1.18.32"
+
+    compileOnly "javax.annotation:javax.annotation-api:1.3.2"
+
+    implementation "com.google.zxing:core:3.5.3"
+    implementation "com.google.zxing:javase:3.5.3"
+    include "com.google.zxing:core:3.5.3"
+    include "com.google.zxing:javase:3.5.3"
+
+    implementation "javazoom:jlayer:1.0.1"
+    include "javazoom:jlayer:1.0.1"
+
+    // Missing dependencies added
+    compileOnly "com.google.code.findbugs:jsr305:3.0.2"
+   implementation("io.netty:netty-handler-proxy:4.1.82.Final") { transitive = false }
+   implementation("io.netty:netty-codec-socks:4.1.82.Final") { transitive = false }
+   implementation("io.netty:netty-codec-http:4.1.82.Final") { transitive = false }
+   include("io.netty:netty-handler-proxy:4.1.82.Final") { transitive = false }
+    include("io.netty:netty-codec-socks:4.1.82.Final") { transitive = false }
+    include("io.netty:netty-codec-http:4.1.82.Final") { transitive = false }
+    implementation "org.nanohttpd:nanohttpd:2.3.1"
+
+    modImplementation "com.viaversion:viafabricplus:${project.viafabricplus_version}"
+    include "com.viaversion:viafabricplus:${project.viafabricplus_version}"
+}
+
+loom {
+    accessWidenerPath = file('src/main/resources/xaclient.accesswidener')
+    runs {
+        client {
+            programArg("--username")
+            programArg(project.hasProperty("username") ? project.property("username") : "Player")
+            vmArg("-Xmx" + (project.hasProperty("ram") ? project.property("ram") : "4096") + "M")
+        }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}

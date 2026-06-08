@@ -1,0 +1,8 @@
+{
+  "clickgui_open": { "sounds": [ "xaclient:clickgui_open" ] },
+  "toggle": { "sounds": [ "xaclient:toggle" ] },
+  "applepay": { "sounds": [ "xaclient:applepay" ] },
+  "welcome": { "sounds": [ "xaclient:welcome" ] },
+  "typing": { "sounds": [ "xaclient:typing" ] },
+  "critical": { "sounds": [ "xaclient:critical" ] }
+}
