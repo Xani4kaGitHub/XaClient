@@ -207,8 +207,32 @@ foreach ($p in $idx.objects.PSObject.Properties) {
 if ($env:SKIPASSETS -ne '1') { Download-Many $assetItems 'Assets' }
 
 # ===================== LAUNCH =====================
-$cp.Add($CLIENT)
-$classpath = ($cp -join ';')
+# de-duplicate libraries: keep only the highest version per group/artifact
+# (Minecraft ships asm 9.6, Fabric ships asm 9.8 -> keep 9.8 only)
+$byKey = @{}
+foreach ($jar in $cp) {
+    $fn = Split-Path $jar -Leaf
+    # strip version: artifact-1.2.3[-classifier].jar -> key = artifact (+ classifier)
+    if ($fn -match '^(?<a>.+?)-(?<v>\d[\w.]*)(?<c>-[a-z0-9]+(-[a-z0-9]+)*)?\.jar$') {
+        $key = $Matches['a'] + $Matches['c']
+        $ver = $Matches['v']
+    } else {
+        $key = $fn; $ver = '0'
+    }
+    if (-not $byKey.ContainsKey($key)) {
+        $byKey[$key] = @{ ver = $ver; path = $jar }
+    } else {
+        # compare versions numerically where possible
+        $old = $byKey[$key].ver
+        $cmp = 0
+        try { $cmp = ([version]($ver -replace '[^0-9.]','')).CompareTo([version]($old -replace '[^0-9.]','')) } catch { $cmp = [string]::Compare($ver, $old) }
+        if ($cmp -gt 0) { $byKey[$key] = @{ ver = $ver; path = $jar } }
+    }
+}
+$cpFinal = New-Object System.Collections.Generic.List[string]
+$cpFinal.Add($CLIENT)
+foreach ($k in $byKey.Keys) { $cpFinal.Add($byKey[$k].path) }
+$classpath = ($cpFinal -join ';')
 $nick = $env:NICK; if (-not $nick) { $nick = 'Player' }
 $ram  = $env:RAM;  if (-not $ram)  { $ram = '4096' }
 $uuid = Offline-UUID $nick

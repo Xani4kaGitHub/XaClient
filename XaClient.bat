@@ -28,7 +28,9 @@ echo.
 
 set "NICK=%nick%"
 set "RAM=%ram%"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0XaLauncher.ps1"
+pushd "%~dp0"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '.\XaLauncher.ps1'"
+popd
 
 echo.
 pause
