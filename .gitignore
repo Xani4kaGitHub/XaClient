@@ -43,6 +43,9 @@ _*.ps1
 run.bat
 XaClient.bat
 release.bat
+release.ps1
+update.ps1
+XaLauncher.ps1
 
 # Local client data
 proxy/
