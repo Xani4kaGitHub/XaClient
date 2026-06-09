@@ -18,6 +18,7 @@ import net.minecraft.util.Identifier;
 
 public class MusicTracker implements IMinecraft {
    private final Thread thread;
+   private volatile boolean running = true;
    private IMediaSession session;
    private ColorRGBA mediaColor = ColorRGBA.WHITE;
    private final Map<Integer, Identifier> textureCache = new ConcurrentHashMap<>();
@@ -28,17 +29,23 @@ public class MusicTracker implements IMinecraft {
 
    public MusicTracker() {
       this.thread = new Thread(() -> {
-         while (true) {
+         while (this.running && !Thread.currentThread().isInterrupted()) {
             try {
                Thread.sleep(100L);
                this.onScheduleTask();
             } catch (InterruptedException var2) {
                Thread.currentThread().interrupt();
+               return;
             }
          }
       });
       this.thread.setDaemon(true);
       this.thread.start();
+   }
+
+   public void stop() {
+      this.running = false;
+      this.thread.interrupt();
    }
 
    private void onScheduleTask() {

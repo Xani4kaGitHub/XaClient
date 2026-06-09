@@ -13,6 +13,7 @@ import lombok.Generated;
 import moscow.xaclient.systems.commands.commands.AuthCommand;
 import moscow.xaclient.systems.commands.commands.AutoPilotCommand;
 import moscow.xaclient.systems.commands.commands.BindCommand;
+import moscow.xaclient.systems.commands.commands.BlockESPCommand;
 import moscow.xaclient.systems.commands.commands.ConfigCommand;
 import moscow.xaclient.systems.commands.commands.FakePlayerCommand;
 import moscow.xaclient.systems.commands.commands.FriendCommand;
@@ -55,6 +56,7 @@ public class CommandRegistry {
       this.register(new ToggleCommand().command());
       this.register(new WaypointsCommand().command());
       this.register(new BindCommand().command());
+      this.register(new BlockESPCommand().command());
    }
 
    public List<Command> commands() {

@@ -18,9 +18,11 @@ import moscow.xaclient.systems.modules.api.ModuleInfo;
 import moscow.xaclient.systems.modules.impl.BaseModule;
 import moscow.xaclient.systems.setting.settings.BooleanSetting;
 import moscow.xaclient.systems.setting.settings.SelectSetting;
+import moscow.xaclient.systems.setting.settings.SliderSetting;
 import moscow.xaclient.systems.target.TargetSettings;
 import moscow.xaclient.utility.animation.base.Animation;
 import moscow.xaclient.utility.animation.base.Easing;
+import moscow.xaclient.utility.colors.ColorRGBA;
 import moscow.xaclient.utility.colors.Colors;
 import moscow.xaclient.utility.render.Draw3DUtility;
 import moscow.xaclient.utility.render.RenderUtility;
@@ -32,6 +34,7 @@ import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.VertexFormat.DrawMode;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -39,6 +42,11 @@ import net.minecraft.util.math.Vec3d;
 @ModuleInfo(name = "Arrows", category = ModuleCategory.VISUALS, desc = "modules.descriptions.tracers")
 public class Arrows extends BaseModule {
    private final BooleanSetting lines = new BooleanSetting(this, "lines");
+   private final SliderSetting distanceFromCenter = new SliderSetting(this, "Distance from center")
+      .min(20.0F)
+      .max(140.0F)
+      .step(1.0F)
+      .currentValue(40.0F);
    private final SelectSetting targets = new SelectSetting(this, "modules.settings.tracers.targets", "modules.settings.tracers.targets.description");
    private final SelectSetting.Value players = new SelectSetting.Value(this.targets, "modules.settings.tracers.targets.players").select();
    private final SelectSetting.Value animals = new SelectSetting.Value(this.targets, "modules.settings.tracers.targets.animals");
@@ -46,6 +54,7 @@ public class Arrows extends BaseModule {
    private final SelectSetting.Value invisibles = new SelectSetting.Value(this.targets, "modules.settings.tracers.targets.invisibles").select();
    private final SelectSetting.Value nakedPlayers = new SelectSetting.Value(this.targets, "modules.settings.tracers.targets.naked_players").select();
    private final SelectSetting.Value friends = new SelectSetting.Value(this.targets, "modules.settings.tracers.targets.friends").select();
+   private final SelectSetting.Value drops = new SelectSetting.Value(this.targets, "drops");
    private final Map<Entity, Arrows.ArrowsAnimation> animations = new HashMap<>();
    private final EventListener<HudRenderEvent> onHud = event -> {
       if (mc.player != null && mc.world != null && !this.lines.isEnabled()) {
@@ -64,7 +73,7 @@ public class Arrows extends BaseModule {
          for (Entry<Entity, Arrows.ArrowsAnimation> entry : this.animations.entrySet()) {
             Entity entity = entry.getKey();
             Arrows.ArrowsAnimation animation = entry.getValue();
-            boolean shouldShow = mc.world.hasEntity(entity) && entity instanceof LivingEntity livingEntity && targetSettings.isEntityValid(livingEntity);
+            boolean shouldShow = this.shouldShow(entity, targetSettings);
             animation.showing.update(shouldShow);
             animation.showing.setDuration(500L);
             if (animation.showing.getValue() == 0.0F && !shouldShow) {
@@ -73,7 +82,7 @@ public class Arrows extends BaseModule {
          }
 
          for (Entity entity : mc.world.getEntities()) {
-            if (entity instanceof LivingEntity livingEntity && targetSettings.isEntityValid(livingEntity) && !this.animations.containsKey(entity)) {
+            if (this.shouldShow(entity, targetSettings) && !this.animations.containsKey(entity)) {
                this.animations.put(entity, new Arrows.ArrowsAnimation());
             }
          }
@@ -92,11 +101,10 @@ public class Arrows extends BaseModule {
                context.drawTexture(
                   XaClient.id("textures/arrow.png"),
                   -10.0F,
-                  40.0F,
+                  this.distanceFromCenter.getCurrentValue(),
                   20.0F,
                   20.0F,
-                  (XaClient.getInstance().getFriendManager().isFriend(arrow.getKey().getName().getString()) ? Colors.GREEN : Colors.ACCENT)
-                     .mulAlpha(arrow.getValue().showing.getValue())
+                  this.getArrowColor(arrow.getKey(), arrow.getValue().showing.getValue())
                );
                RenderUtility.end(ms);
                RenderUtility.end(ms);
@@ -133,9 +141,9 @@ public class Arrows extends BaseModule {
          BufferBuilder builder = RenderSystem.renderThreadTesselator().begin(DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
          for (Entity entity : mc.world.getEntities()) {
-            if (entity instanceof LivingEntity livingEntity && targetSettings.isEntityValid(livingEntity)) {
-               Vec3d entityPos = Utils.getInterpolatedPos(livingEntity, event.getTickDelta());
-               Draw3DUtility.renderLineFromPlayer(matrices, builder, entityPos.add(0.0, livingEntity.getHeight() / 2.0F, 0.0), Colors.WHITE);
+            if (this.shouldShow(entity, targetSettings)) {
+               Vec3d entityPos = Utils.getInterpolatedPos(entity, event.getTickDelta());
+               Draw3DUtility.renderLineFromPlayer(matrices, builder, entityPos.add(0.0, entity.getHeight() / 2.0F, 0.0), this.getArrowColor(entity, 1.0F));
             }
          }
 
@@ -143,6 +151,26 @@ public class Arrows extends BaseModule {
          RenderUtility.endRender3D();
       }
    };
+
+   private boolean shouldShow(Entity entity, TargetSettings targetSettings) {
+      if (entity == null || mc.world == null || !mc.world.hasEntity(entity)) {
+         return false;
+      }
+
+      if (entity instanceof LivingEntity livingEntity) {
+         return targetSettings.isEntityValid(livingEntity);
+      }
+
+      return this.drops.isSelected() && entity instanceof ItemEntity itemEntity && !itemEntity.getStack().isEmpty();
+   }
+
+   private ColorRGBA getArrowColor(Entity entity, float alpha) {
+      if (entity instanceof ItemEntity) {
+         return Colors.RED.mulAlpha(alpha);
+      }
+
+      return (XaClient.getInstance().getFriendManager().isFriend(entity.getName().getString()) ? Colors.GREEN : Colors.ACCENT).mulAlpha(alpha);
+   }
 
    private float calculateAngle(Entity entity, float partialTicks) {
       Vec3d pos = Utils.getInterpolatedPos(entity, partialTicks).subtract(mc.gameRenderer.getCamera().getPos());

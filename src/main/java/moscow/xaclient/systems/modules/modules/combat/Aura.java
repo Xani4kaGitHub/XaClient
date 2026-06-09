@@ -79,6 +79,7 @@ public class Aura extends BaseModule {
    private ModeSetting.Value legitRotation;
    private ModeSetting.Value legitV2Rotation;
    private ModeSetting.Value auraAIRotation;
+   private ModeSetting.Value hvhRotation;
    private SliderSetting legitYawSpeed;
    private SliderSetting legitPitchSpeed;
    private SliderSetting legitSmoothFactor;
@@ -91,6 +92,10 @@ public class Aura extends BaseModule {
    private SliderSetting legitV2MissChance;
    private SliderSetting auraAIInfluence;
    private SliderSetting auraAIMissChance;
+   private SliderSetting hvhSpinSpeed;
+   private SliderSetting hvhPitch;
+   private SliderSetting hvhJitter;
+   private SliderSetting hvhAimBlend;
    private ButtonSetting auraAITrainAndLoad;
    private ButtonSetting auraAICancelTraining;
    private ButtonSetting auraAILoadProfile;
@@ -115,6 +120,7 @@ public class Aura extends BaseModule {
    private float noiseFactor = 0.0F;
    private int attacks;
    private Rotation additional;
+   private float hvhSpinYaw;
    private final Timer collideTimer = new Timer();
    private final Timer legitV2PointTimer = new Timer();
    private final Timer legitV2ReactionTimer = new Timer();
@@ -162,6 +168,7 @@ public class Aura extends BaseModule {
             this.rotationStartTime = System.currentTimeMillis();
             this.noise = new PerlinNoise();
             this.noiseFactor = 1.0F;
+            this.hvhSpinYaw = mc.player.getYaw();
             this.resetLegitV2State();
          }
       }
@@ -183,6 +190,7 @@ public class Aura extends BaseModule {
       this.legitRotation = new ModeSetting.Value(this.rotationMode, "modules.settings.aura.legitRotation");
       this.legitV2Rotation = new ModeSetting.Value(this.rotationMode, "LegitV2");
       this.auraAIRotation = new ModeSetting.Value(this.rotationMode, "AuraAI");
+      this.hvhRotation = new ModeSetting.Value(this.rotationMode, "HVH");
       this.legitYawSpeed = new SliderSetting(this, "modules.settings.aura.legitYawSpeed", () -> !this.rotationMode.is(this.legitRotation))
          .min(1.0F)
          .max(180.0F)
@@ -247,6 +255,27 @@ public class Aura extends BaseModule {
          .max(100.0F)
          .step(1.0F)
          .currentValue(0.0F)
+         .suffix("%");
+      this.hvhSpinSpeed = new SliderSetting(this, "HVH Spin Speed", () -> !this.rotationMode.is(this.hvhRotation))
+         .min(0.0F)
+         .max(180.0F)
+         .step(1.0F)
+         .currentValue(65.0F);
+      this.hvhPitch = new SliderSetting(this, "HVH Pitch", () -> !this.rotationMode.is(this.hvhRotation))
+         .min(-90.0F)
+         .max(90.0F)
+         .step(1.0F)
+         .currentValue(78.0F);
+      this.hvhJitter = new SliderSetting(this, "HVH Jitter", () -> !this.rotationMode.is(this.hvhRotation))
+         .min(0.0F)
+         .max(90.0F)
+         .step(1.0F)
+         .currentValue(25.0F);
+      this.hvhAimBlend = new SliderSetting(this, "HVH Aim Blend", () -> !this.rotationMode.is(this.hvhRotation))
+         .min(0.0F)
+         .max(100.0F)
+         .step(1.0F)
+         .currentValue(30.0F)
          .suffix("%");
       this.auraAITrainAndLoad = new ButtonSetting(this, "AuraAI Train & Load", () -> !this.rotationMode.is(this.auraAIRotation))
          .action(() -> XaClient.getInstance().getAuraAIManager().startTraining(true));
@@ -324,18 +353,24 @@ public class Aura extends BaseModule {
             == Type.BLOCK) {
          return false;
       } else {
-         return !MathUtility.canTraceWithBlock(
-                  this.attackDistance.getCurrentValue(),
-                  XaClient.getInstance().getRotationHandler().getCurrentRotation().getYaw(),
-                  XaClient.getInstance().getRotationHandler().getCurrentRotation().getPitch(),
-                  mc.player,
-                  targetedEntity,
-                  !this.walls.isEnabled()
-               )
-               && this.rayTrace.isEnabled()
+         return this.rayTrace.isEnabled() && !this.canTraceAttack(targetedEntity)
             ? false
             : !this.onlyCriticals.isEnabled() || !this.isCriticalRequired(targetedEntity) || CombatUtility.canPerformCriticalHit(targetedEntity, true);
       }
+   }
+
+   private boolean canTraceAttack(LivingEntity targetedEntity) {
+      Rotation rotation = this.rotationMode.is(this.hvhRotation)
+         ? RotationMath.getRotationTo(this.getHvhAimPoint(targetedEntity))
+         : XaClient.getInstance().getRotationHandler().getCurrentRotation();
+      return MathUtility.canTraceWithBlock(
+         this.attackDistance.getCurrentValue(),
+         rotation.getYaw(),
+         rotation.getPitch(),
+         mc.player,
+         targetedEntity,
+         !this.walls.isEnabled()
+      );
    }
 
    private boolean isCriticalRequired(LivingEntity targetedEntity) {
@@ -516,6 +551,31 @@ public class Aura extends BaseModule {
                handler.getRotationIdle().reset();
                mc.player.setYaw(corrected.getYaw());
                mc.player.setPitch(corrected.getPitch());
+            }
+
+            if (this.rotationMode.is(this.hvhRotation)) {
+               Rotation targetRotation = RotationMath.getRotationTo(this.getHvhAimPoint(targetedEntity));
+               this.hvhSpinYaw = MathHelper.wrapDegrees(this.hvhSpinYaw + this.hvhSpinSpeed.getCurrentValue());
+               float jitter = this.hvhJitter.getCurrentValue();
+               float jitterYaw = (mc.player.age % 2 == 0 ? jitter : -jitter) + (float)Math.sin(System.currentTimeMillis() * 0.025) * jitter * 0.35F;
+               float blend = this.hvhAimBlend.getCurrentValue() / 100.0F;
+               float spinYaw = MathHelper.wrapDegrees(this.hvhSpinYaw + jitterYaw);
+               float yaw = spinYaw + MathHelper.wrapDegrees(targetRotation.getYaw() - spinYaw) * blend;
+               float pitchBase = this.hvhPitch.getCurrentValue();
+               float pitch = MathHelper.clamp(
+                  pitchBase + (targetRotation.getPitch() - pitchBase) * blend + (float)Math.cos(System.currentTimeMillis() * 0.018) * jitter * 0.12F,
+                  -90.0F,
+                  90.0F
+               );
+
+               handler.rotate(
+                  RotationMath.correctRotation(new Rotation(yaw, pitch)),
+                  moveCorrection,
+                  180.0F,
+                  180.0F,
+                  180.0F,
+                  RotationPriority.TO_TARGET
+               );
             }
 
             if (this.rotationMode.is(this.holyWorldRotation)) {
@@ -822,6 +882,20 @@ public class Aura extends BaseModule {
       );
    }
 
+   private Vec3d getHvhAimPoint(LivingEntity targetedEntity) {
+      Box box = targetedEntity.getBoundingBox();
+      if (XaClient.getInstance().getModuleManager().getModule(ElytraTarget.class).isEnabled() && targetedEntity instanceof PlayerEntity player) {
+         Vec3d predicted = ElytraPredictionSystem.predictPlayerPosition(player);
+         box = box.offset(predicted.x - targetedEntity.getX(), predicted.y - targetedEntity.getY(), predicted.z - targetedEntity.getZ());
+      }
+
+      return new Vec3d(
+         (box.minX + box.maxX) * 0.5,
+         MathHelper.clamp(targetedEntity.getEyeY(), box.minY, box.maxY),
+         (box.minZ + box.maxZ) * 0.5
+      );
+   }
+
    private void refreshLegitV2AimOffset(LivingEntity targetedEntity) {
       if (this.legitV2Target != targetedEntity) {
          this.legitV2YawVelocity = 0.0F;
@@ -863,6 +937,7 @@ public class Aura extends BaseModule {
       this.rotationStartTime = System.currentTimeMillis();
       this.noise = new PerlinNoise();
       this.noiseFactor = 1.0F;
+      this.hvhSpinYaw = mc.player != null ? mc.player.getYaw() : 0.0F;
       this.resetLegitV2State();
       XaClient.getInstance().getAuraAIManager().resetRuntime();
       super.onEnable();

@@ -26,6 +26,7 @@ import moscow.xaclient.systems.theme.ThemeManager;
 import moscow.xaclient.systems.waypoints.WayPointsManager;
 import moscow.xaclient.ui.hud.Hud;
 import moscow.xaclient.ui.menu.MenuScreen;
+import moscow.xaclient.utility.game.ProcessTerminator;
 import moscow.xaclient.utility.game.TitleBarHelper;
 import moscow.xaclient.utility.game.server.TPSHandler;
 import moscow.xaclient.utility.interfaces.IMinecraft;
@@ -81,6 +82,7 @@ public enum XaClient implements IMinecraft {
    @Initialization
    public void initialize() {
       LOGGER.info("Initializing {}...", NAME);
+      ProcessTerminator.install();
       this.musicTracker = new MusicTracker();
       this.altManager = new AltManager();
       this.wayPointsManager = new WayPointsManager();
@@ -131,6 +133,10 @@ public enum XaClient implements IMinecraft {
 
    public void shutdown() {
       LOGGER.info("Shutting down...");
+      if (this.musicTracker != null) {
+         this.musicTracker.stop();
+      }
+
       this.fileManager.saveClientFiles();
       if (!this.isPanic()) {
          this.configManager.getAutoSaveConfig().save();

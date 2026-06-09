@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'moscow.xaclient'
-version = '1.1.4'
+version = '1.1.5'
 
 base {
     archivesName = 'xaclient'
@@ -48,6 +48,8 @@ dependencies {
 
     // Missing dependencies added
     compileOnly "com.google.code.findbugs:jsr305:3.0.2"
+    compileOnly "net.java.dev.jna:jna:5.15.0"
+    compileOnly "net.java.dev.jna:jna-platform:5.15.0"
    implementation("io.netty:netty-handler-proxy:4.1.82.Final") { transitive = false }
    implementation("io.netty:netty-codec-socks:4.1.82.Final") { transitive = false }
    implementation("io.netty:netty-codec-http:4.1.82.Final") { transitive = false }
