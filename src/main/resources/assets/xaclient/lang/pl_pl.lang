@@ -799,3 +799,50 @@ modules.settings.auto_explosion.delay=opóźnienie
 inventory.button.drop_all=Rzuć wszystko
 
 lines=linie
+
+# Auto Respawn
+modules.descriptions.auto_respawn=Automatycznie odradza po śmierci
+modules.settings.auto_respawn.delay=Opóźnienie
+modules.settings.auto_respawn.delay.description=Ile ticków czekać przed odrodzeniem
+
+# Chat Helper
+modules.descriptions.chat_helper=Pomocnik czatu z antyspamem i sufiksem wiadomości
+modules.settings.chat_helper.anti_spam=Antyspam
+modules.settings.chat_helper.anti_spam.description=Ukrywa identyczne wiadomości przychodzące jedna po drugiej
+modules.settings.chat_helper.suffix=Sufiks
+modules.settings.chat_helper.suffix.description=Dodaje tekst na końcu zwykłych wiadomości
+modules.settings.chat_helper.suffix_text=Tekst sufiksu
+modules.settings.chat_helper.suffix_text.description=Tekst dodawany do wiadomości na czacie
+
+# Aspect Ratio
+modules.descriptions.aspect_ratio=Zmienia proporcje kamery
+modules.settings.aspect_ratio.ratio=Proporcje
+modules.settings.aspect_ratio.ratio.description=Poziome proporcje obrazu dla kamery
+
+# Air Stuck
+modules.descriptions.air_stuck=Zamraża gracza w powietrzu
+modules.settings.air_stuck.only_falling=Tylko podczas spadania
+modules.settings.air_stuck.only_falling.description=Zamraża pozycję tylko wtedy, gdy gracz spada
+
+# Jump Circle
+modules.descriptions.jump_circle=Rysuje koło na ziemi podczas skoku
+modules.settings.jump_circle.radius=Promień
+modules.settings.jump_circle.width=Grubość
+modules.settings.jump_circle.duration=Czas trwania
+modules.settings.jump_circle.color=Kolor
+
+# Hit Marker
+modules.descriptions.hit_marker=Pokazuje znacznik w miejscu trafienia
+modules.settings.hit_marker.size=Rozmiar
+modules.settings.hit_marker.duration=Czas trwania
+modules.settings.hit_marker.glow=Poświata
+modules.settings.hit_marker.color=Kolor
+
+# Totem Pop
+modules.descriptions.totem_pop=Pokazuje widmową kopię gracza po aktywacji totemu
+modules.settings.totem_pop.duration=Czas trwania
+modules.settings.totem_pop.rise=Wznoszenie
+modules.settings.totem_pop.self=Na siebie
+modules.settings.totem_pop.color=Kolor
+
+ticks=ticków

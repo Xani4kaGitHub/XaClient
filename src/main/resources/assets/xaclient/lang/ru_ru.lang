@@ -872,3 +872,50 @@ modules.settings.fakeplayer.netheriteKit=Незерит
 modules.settings.fakeplayer.diamondKit=Алмазка
 modules.settings.fakeplayer.count=Количество
 modules.settings.fakeplayer.count.description=Количество фейковых игроков
+
+# Auto Respawn
+modules.descriptions.auto_respawn=Автоматически возрождает после смерти
+modules.settings.auto_respawn.delay=Задержка
+modules.settings.auto_respawn.delay.description=Сколько тиков ждать перед возрождением
+
+# Chat Helper
+modules.descriptions.chat_helper=Помощник чата с антиспамом и суффиксом сообщений
+modules.settings.chat_helper.anti_spam=Антиспам
+modules.settings.chat_helper.anti_spam.description=Скрывает одинаковые сообщения, которые приходят подряд
+modules.settings.chat_helper.suffix=Суффикс
+modules.settings.chat_helper.suffix.description=Добавляет текст в конец обычных сообщений
+modules.settings.chat_helper.suffix_text=Текст суффикса
+modules.settings.chat_helper.suffix_text.description=Текст, который будет добавляться к сообщениям
+
+# Aspect Ratio
+modules.descriptions.aspect_ratio=Изменяет соотношение сторон камеры
+modules.settings.aspect_ratio.ratio=Соотношение
+modules.settings.aspect_ratio.ratio.description=Горизонтальное соотношение сторон для камеры
+
+# Air Stuck
+modules.descriptions.air_stuck=Замораживает игрока в воздухе
+modules.settings.air_stuck.only_falling=Только при падении
+modules.settings.air_stuck.only_falling.description=Замораживает позицию только когда игрок падает
+
+# Jump Circle
+modules.descriptions.jump_circle=Рисует круг на земле при прыжке
+modules.settings.jump_circle.radius=Радиус
+modules.settings.jump_circle.width=Толщина
+modules.settings.jump_circle.duration=Длительность
+modules.settings.jump_circle.color=Цвет
+
+# Hit Marker
+modules.descriptions.hit_marker=Показывает маркер в месте удара
+modules.settings.hit_marker.size=Размер
+modules.settings.hit_marker.duration=Длительность
+modules.settings.hit_marker.glow=Свечение
+modules.settings.hit_marker.color=Цвет
+
+# Totem Pop
+modules.descriptions.totem_pop=Показывает призрачную копию игрока при срабатывании тотема
+modules.settings.totem_pop.duration=Длительность
+modules.settings.totem_pop.rise=Подъем
+modules.settings.totem_pop.self=На себя
+modules.settings.totem_pop.color=Цвет
+
+ticks=тиков

@@ -54,6 +54,7 @@ proxy/
 # External / copied local resources
 hitsound and killsounds/
 СУРС-ДРУГОГО-КЛИЕНТА/
+БРАТЬОТСЮДАФУНКЦИИ/
 
 # Codex / Claude local state
 .claude/

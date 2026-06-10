@@ -10,11 +10,13 @@ import moscow.xaclient.systems.setting.settings.BooleanSetting;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.math.Vec3d;
 
-@ModuleInfo(name = "Air Stuck", category = ModuleCategory.MOVEMENT, desc = "Freezes player movement in the air")
+// Замораживает игрока на текущей позиции и блокирует отправку movement-пакетов.
+@ModuleInfo(name = "Air Stuck", category = ModuleCategory.MOVEMENT, desc = "modules.descriptions.air_stuck")
 public class AirStuck extends BaseModule {
-   private final BooleanSetting onlyFalling = new BooleanSetting(this, "Only Falling");
+   private final BooleanSetting onlyFalling = new BooleanSetting(this, "modules.settings.air_stuck.only_falling");
    private Vec3d frozenPos;
 
+   // Фиксирует первую подходящую позицию и удерживает игрока на ней каждый тик.
    private final EventListener<ClientPlayerTickEvent> onTick = event -> {
       if (mc.player == null || mc.world == null) {
          return;
@@ -33,17 +35,20 @@ public class AirStuck extends BaseModule {
       mc.player.fallDistance = 0.0F;
    };
 
+   // Не даёт клиенту отправлять серверу новые координаты, пока позиция заморожена.
    private final EventListener<SendPacketEvent> onSendPacket = event -> {
       if (this.frozenPos != null && event.getPacket() instanceof PlayerMoveC2SPacket) {
          event.cancel();
       }
    };
 
+   // Сбрасывает сохранённую позицию при включении, чтобы заморозка начиналась заново.
    @Override
    public void onEnable() {
       this.frozenPos = null;
    }
 
+   // Очищает состояние и гасит скорость после отключения.
    @Override
    public void onDisable() {
       this.frozenPos = null;

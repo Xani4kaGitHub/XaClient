@@ -883,3 +883,50 @@ modules.settings.fakeplayer.netheriteKit=Netherite
 modules.settings.fakeplayer.diamondKit=Diamond
 modules.settings.fakeplayer.count=Count
 modules.settings.fakeplayer.count.description=Amount of fake players to spawn
+
+# Auto Respawn
+modules.descriptions.auto_respawn=Automatically respawns after death
+modules.settings.auto_respawn.delay=Delay
+modules.settings.auto_respawn.delay.description=How many ticks to wait before respawning
+
+# Chat Helper
+modules.descriptions.chat_helper=Chat helper with anti-spam and message suffix
+modules.settings.chat_helper.anti_spam=Anti-spam
+modules.settings.chat_helper.anti_spam.description=Hides identical messages that arrive one after another
+modules.settings.chat_helper.suffix=Suffix
+modules.settings.chat_helper.suffix.description=Adds text to the end of regular chat messages
+modules.settings.chat_helper.suffix_text=Suffix text
+modules.settings.chat_helper.suffix_text.description=Text that will be appended to chat messages
+
+# Aspect Ratio
+modules.descriptions.aspect_ratio=Changes the camera aspect ratio
+modules.settings.aspect_ratio.ratio=Ratio
+modules.settings.aspect_ratio.ratio.description=Horizontal aspect ratio for the camera
+
+# Air Stuck
+modules.descriptions.air_stuck=Freezes the player in the air
+modules.settings.air_stuck.only_falling=Only falling
+modules.settings.air_stuck.only_falling.description=Freezes position only while the player is falling
+
+# Jump Circle
+modules.descriptions.jump_circle=Draws a circle on the ground when you jump
+modules.settings.jump_circle.radius=Radius
+modules.settings.jump_circle.width=Width
+modules.settings.jump_circle.duration=Duration
+modules.settings.jump_circle.color=Color
+
+# Hit Marker
+modules.descriptions.hit_marker=Shows a marker at the hit point
+modules.settings.hit_marker.size=Size
+modules.settings.hit_marker.duration=Duration
+modules.settings.hit_marker.glow=Glow
+modules.settings.hit_marker.color=Color
+
+# Totem Pop
+modules.descriptions.totem_pop=Shows a ghost copy of a player when a totem pops
+modules.settings.totem_pop.duration=Duration
+modules.settings.totem_pop.rise=Rise
+modules.settings.totem_pop.self=Self
+modules.settings.totem_pop.color=Color
+
+ticks=ticks

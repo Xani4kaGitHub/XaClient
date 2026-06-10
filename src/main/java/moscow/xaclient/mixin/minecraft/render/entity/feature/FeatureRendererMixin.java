@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import moscow.xaclient.XaClient;
 import moscow.xaclient.systems.modules.modules.visuals.AntiInvisible;
+import moscow.xaclient.systems.modules.modules.visuals.TotemPop;
 import moscow.xaclient.utility.colors.Colors;
 import moscow.xaclient.utility.mixins.EntityRenderStateAddition;
 import net.minecraft.client.render.RenderLayer;
@@ -49,6 +50,10 @@ public abstract class FeatureRendererMixin {
             : Colors.WHITE.withAlpha(ANTI_INVISIBLE_MODULE.getOpacity().getCurrentValue() / 100.0F * 255.0F).getRGB();
       }
 
+      if (TotemPop.isRenderingGhost()) {
+         color = TotemPop.getGhostColor();
+      }
+
       original.call(new Object[]{instance, matrixStack, vertexConsumer, light, overlay, color});
    }
 
@@ -61,6 +66,7 @@ public abstract class FeatureRendererMixin {
    )
    private static RenderLayer changeModelRenderLayer(Identifier texture, Operation<RenderLayer> original, @Local(argsOnly = true) LivingEntityRenderState state) {
       return ANTI_INVISIBLE_MODULE.isEnabled() && ANTI_INVISIBLE_MODULE.shouldModifyOpacity(state)
+            || TotemPop.isRenderingGhost()
          ? RenderLayer.getItemEntityTranslucentCull(texture)
          : (RenderLayer)original.call(new Object[]{texture});
    }

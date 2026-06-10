@@ -40,6 +40,7 @@ public class ChatScreenMixin extends Screen implements IMinecraft {
       }
    }
 
+   // Даёт ChatHelper и другим модулям изменить текст перед отправкой.
    @ModifyVariable(method = "sendMessage(Ljava/lang/String;Z)V", at = @At("HEAD"), argsOnly = true, ordinal = 0)
    private String onChatSend(String text) {
       if (text.startsWith(XaClient.getInstance().getCommandManager().getPrefix())) {

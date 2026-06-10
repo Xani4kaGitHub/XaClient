@@ -849,3 +849,50 @@ modules.settings.auto_explosion.delay=Затримка
 inventory.button.drop_all=Викинути все
 
 lines=Лінії
+
+# Auto Respawn
+modules.descriptions.auto_respawn=Автоматично відроджує після смерті
+modules.settings.auto_respawn.delay=Затримка
+modules.settings.auto_respawn.delay.description=Скільки тіків чекати перед відродженням
+
+# Chat Helper
+modules.descriptions.chat_helper=Помічник чату з антиспамом і суфіксом повідомлень
+modules.settings.chat_helper.anti_spam=Антиспам
+modules.settings.chat_helper.anti_spam.description=Приховує однакові повідомлення, які приходять підряд
+modules.settings.chat_helper.suffix=Суфікс
+modules.settings.chat_helper.suffix.description=Додає текст у кінець звичайних повідомлень
+modules.settings.chat_helper.suffix_text=Текст суфікса
+modules.settings.chat_helper.suffix_text.description=Текст, який буде додаватися до повідомлень
+
+# Aspect Ratio
+modules.descriptions.aspect_ratio=Змінює співвідношення сторін камери
+modules.settings.aspect_ratio.ratio=Співвідношення
+modules.settings.aspect_ratio.ratio.description=Горизонтальне співвідношення сторін для камери
+
+# Air Stuck
+modules.descriptions.air_stuck=Заморожує гравця в повітрі
+modules.settings.air_stuck.only_falling=Тільки при падінні
+modules.settings.air_stuck.only_falling.description=Заморожує позицію лише коли гравець падає
+
+# Jump Circle
+modules.descriptions.jump_circle=Малює коло на землі під час стрибка
+modules.settings.jump_circle.radius=Радіус
+modules.settings.jump_circle.width=Товщина
+modules.settings.jump_circle.duration=Тривалість
+modules.settings.jump_circle.color=Колір
+
+# Hit Marker
+modules.descriptions.hit_marker=Показує маркер у місці удару
+modules.settings.hit_marker.size=Розмір
+modules.settings.hit_marker.duration=Тривалість
+modules.settings.hit_marker.glow=Світіння
+modules.settings.hit_marker.color=Колір
+
+# Totem Pop
+modules.descriptions.totem_pop=Показує примарну копію гравця при спрацюванні тотема
+modules.settings.totem_pop.duration=Тривалість
+modules.settings.totem_pop.rise=Підйом
+modules.settings.totem_pop.self=На себе
+modules.settings.totem_pop.color=Колір
+
+ticks=тіків

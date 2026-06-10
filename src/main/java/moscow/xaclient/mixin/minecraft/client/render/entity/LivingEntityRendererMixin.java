@@ -9,6 +9,7 @@ import moscow.xaclient.XaClient;
 import moscow.xaclient.mixin.accessors.BipedEntityModelAccessor;
 import moscow.xaclient.systems.modules.modules.visuals.AntiInvisible;
 import moscow.xaclient.systems.modules.modules.visuals.FriendMarkers;
+import moscow.xaclient.systems.modules.modules.visuals.TotemPop;
 import moscow.xaclient.utility.colors.Colors;
 import moscow.xaclient.utility.game.countermine.AntiAim;
 import moscow.xaclient.utility.mixins.EntityRenderStateAddition;
@@ -109,6 +110,10 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, S extend
             : Colors.WHITE.withAlpha(ANTI_INVISIBLE_MODULE.getOpacity().getCurrentValue() / 100.0F * 255.0F).getRGB();
       }
 
+      if (TotemPop.isRenderingGhost()) {
+         color = TotemPop.getGhostColor();
+      }
+
       Entity entity = ((EntityRenderStateAddition)livingEntityRenderState).xaclient$getEntity();
       FriendMarkers markers = XaClient.getInstance().getModuleManager().getModule(FriendMarkers.class);
       if (entity instanceof PlayerEntity player
@@ -128,6 +133,9 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, S extend
    @ModifyReturnValue(method = "getRenderLayer", at = @At("RETURN"))
    private RenderLayer changeRenderLayer(RenderLayer original, S state, boolean showBody, boolean translucent, boolean showOutline) {
       if (ANTI_INVISIBLE_MODULE.isEnabled() && !showBody && !translucent && !showOutline) {
+         state.invisible = false;
+         return RenderLayer.getItemEntityTranslucentCull(this.getTexture(state));
+      } else if (TotemPop.isRenderingGhost()) {
          state.invisible = false;
          return RenderLayer.getItemEntityTranslucentCull(this.getTexture(state));
       } else {
