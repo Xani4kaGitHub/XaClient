@@ -2,6 +2,7 @@ package moscow.xaclient.mixin.minecraft.client.gui.screen;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import moscow.xaclient.XaClient;
+import moscow.xaclient.systems.event.impl.render.AspectRatioEvent;
 import moscow.xaclient.systems.modules.modules.player.NoRayTrace;
 import moscow.xaclient.systems.modules.modules.visuals.Removals;
 import moscow.xaclient.utility.render.Utils;
@@ -22,6 +23,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
+   @Inject(method = "getBasicProjectionMatrix", at = @At("RETURN"), cancellable = true)
+   private void onGetBasicProjectionMatrix(float fovDegrees, CallbackInfoReturnable<Matrix4f> cir) {
+      AspectRatioEvent event = new AspectRatioEvent();
+      XaClient.getInstance().getEventManager().triggerEvent(event);
+      if (event.isCancelled() && event.getRatio() > 0.0F) {
+         Matrix4f matrix = new Matrix4f(cir.getReturnValue());
+         matrix.m00(matrix.m11() / event.getRatio());
+         cir.setReturnValue(matrix);
+      }
+   }
+
    @Inject(
       method = "renderWorld",
       at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiler/Profiler;swap(Ljava/lang/String;)V", args = "ldc=hand")

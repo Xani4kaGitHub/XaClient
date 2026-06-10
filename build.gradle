@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'moscow.xaclient'
-version = '1.1.6'
+version = '1.1.7'
 
 base {
     archivesName = 'xaclient'
@@ -58,6 +58,10 @@ dependencies {
     include("io.netty:netty-codec-http:4.1.82.Final") { transitive = false }
     implementation "org.nanohttpd:nanohttpd:2.3.1"
 
+    // ViaFabricPlus 1.21.4 backport. This is the max reachable on a 1.21.4 client base:
+    // its bundled Via cores cap server support at ~1.21.5. Reaching 1.21.11 is impossible
+    // without bumping minecraft_version (every Via build compatible with the 1.21.4 client is
+    // frozen on an old ViaVersion that doesn't know newer protocols).
     modImplementation "com.viaversion:viafabricplus:${project.viafabricplus_version}"
     include "com.viaversion:viafabricplus:${project.viafabricplus_version}"
 }

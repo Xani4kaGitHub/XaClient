@@ -5,6 +5,7 @@ import moscow.xaclient.framework.base.CustomDrawContext;
 import moscow.xaclient.systems.event.impl.render.ChatRenderEvent;
 import moscow.xaclient.systems.event.impl.window.ChatClickEvent;
 import moscow.xaclient.systems.event.impl.window.ChatReleaseEvent;
+import moscow.xaclient.systems.event.impl.window.ChatSendEvent;
 import moscow.xaclient.utility.interfaces.IMinecraft;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ChatInputSuggestor;
@@ -16,6 +17,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -36,6 +38,17 @@ public class ChatScreenMixin extends Screen implements IMinecraft {
          mc.inGameHud.getChatHud().addToMessageHistory(text);
          ci.cancel();
       }
+   }
+
+   @ModifyVariable(method = "sendMessage(Ljava/lang/String;Z)V", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+   private String onChatSend(String text) {
+      if (text.startsWith(XaClient.getInstance().getCommandManager().getPrefix())) {
+         return text;
+      }
+
+      ChatSendEvent event = new ChatSendEvent(text);
+      XaClient.getInstance().getEventManager().triggerEvent(event);
+      return event.isCancelled() ? text : event.getMessage();
    }
 
    @Inject(method = "render", at = @At("RETURN"))
