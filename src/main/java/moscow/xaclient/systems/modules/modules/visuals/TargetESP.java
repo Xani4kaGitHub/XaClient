@@ -32,6 +32,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.HitResult.Type;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.RaycastContext.FluidHandling;
@@ -44,6 +45,8 @@ public class TargetESP extends BaseModule {
    private final ModeSetting mode = new ModeSetting(this, "modules.settings.target_esp.mode");
    private final ModeSetting.Value souls = new ModeSetting.Value(this.mode, "modules.settings.target_esp.mode.souls");
    private final ModeSetting.Value crystals = new ModeSetting.Value(this.mode, "modules.settings.target_esp.mode.crystals").select();
+   private final ModeSetting.Value markers = new ModeSetting.Value(this.mode, "modules.settings.target_esp.mode.markers");
+   private final ModeSetting.Value circle = new ModeSetting.Value(this.mode, "modules.settings.target_esp.mode.circle");
    private final ColorSetting colorTarget = new ColorSetting(this, "color").color(Colors.ACCENT);
    private final Animation animation = new Animation(300L, 0.0F, Easing.BOTH_CUBIC);
    private final Animation moving = new Animation(70L, 0.0F, Easing.LINEAR);
@@ -77,6 +80,10 @@ public class TargetESP extends BaseModule {
             RenderSystem.depthMask(false);
             if (this.crystals.isSelected()) {
                this.drawCrystals(ms, this.prevTarget);
+            } else if (this.markers.isSelected()) {
+               this.drawMarkers(ms, this.prevTarget);
+            } else if (this.circle.isSelected()) {
+               this.drawCircle(ms, this.prevTarget);
             } else {
                this.drawGhosts(ms, this.prevTarget);
             }
@@ -210,6 +217,53 @@ public class TargetESP extends BaseModule {
                ms.pop();
             }
          }
+      }
+
+      BufferRenderer.drawWithGlobalProgram(builder.end());
+   }
+
+   private void drawMarkers(MatrixStack ms, LivingEntity target) {
+      Camera camera = mc.gameRenderer.getCamera();
+      ColorRGBA color = this.colorTarget.getColor();
+      Identifier id = XaClient.id("textures/bloom.png");
+      RenderSystem.setShaderTexture(0, id);
+      RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+      BufferBuilder builder = RenderSystem.renderThreadTesselator().begin(DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+      RenderUtility.prepareMatrices(ms, this.getRenderPos(this.prevTarget));
+      float size = 0.6F + 0.1F * this.animation.getValue();
+      float height = target.getHeight() + 0.5F;
+      ms.push();
+      ms.translate(0.0F, height, 0.0F);
+      ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(this.moving.getValue() * 2.0F));
+      DrawUtility.drawImage(
+         ms,
+         builder,
+         (double)(-size / 2.0F),
+         (double)(-size / 2.0F),
+         0.0,
+         (double)size,
+         (double)size,
+         color.withAlpha(255.0F * this.animation.getValue())
+      );
+      ms.pop();
+      BufferRenderer.drawWithGlobalProgram(builder.end());
+   }
+
+   private void drawCircle(MatrixStack ms, LivingEntity target) {
+      ColorRGBA color = this.colorTarget.getColor();
+      RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+      BufferBuilder builder = RenderSystem.renderThreadTesselator().begin(DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+      RenderUtility.prepareMatrices(ms, this.getRenderPos(this.prevTarget));
+      float radius = target.getWidth() * 0.9F * (0.8F + 0.2F * this.animation.getValue());
+      float ringHeight = 0.12F;
+      float alpha = 200.0F * this.animation.getValue();
+      var matrix = ms.peek().getPositionMatrix();
+      for (int i = 0; i <= 360; i += 6) {
+         float rad = (float)Math.toRadians(i + this.moving.getValue() * 0.5F);
+         float x = (float)(MathUtility.cos(rad) * radius);
+         float z = (float)(MathUtility.sin(rad) * radius);
+         builder.vertex(matrix, x, 0.05F, z).color(color.withAlpha(alpha).getRGB());
+         builder.vertex(matrix, x, 0.05F + ringHeight, z).color(color.withAlpha(0.0F).getRGB());
       }
 
       BufferRenderer.drawWithGlobalProgram(builder.end());

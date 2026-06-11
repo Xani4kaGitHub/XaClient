@@ -17,6 +17,7 @@ import moscow.xaclient.systems.commands.commands.BlockESPCommand;
 import moscow.xaclient.systems.commands.commands.ConfigCommand;
 import moscow.xaclient.systems.commands.commands.FakePlayerCommand;
 import moscow.xaclient.systems.commands.commands.FriendCommand;
+import moscow.xaclient.systems.commands.commands.GpsCommand;
 import moscow.xaclient.systems.commands.commands.HelpCommand;
 import moscow.xaclient.systems.commands.commands.InventoryCommand;
 import moscow.xaclient.systems.commands.commands.PrefixCommand;
@@ -57,6 +58,7 @@ public class CommandRegistry {
       this.register(new WaypointsCommand().command());
       this.register(new BindCommand().command());
       this.register(new BlockESPCommand().command());
+      this.register(new GpsCommand().command());
    }
 
    public List<Command> commands() {

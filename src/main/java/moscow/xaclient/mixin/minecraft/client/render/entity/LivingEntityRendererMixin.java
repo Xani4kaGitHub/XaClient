@@ -7,7 +7,9 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import moscow.xaclient.XaClient;
 import moscow.xaclient.mixin.accessors.BipedEntityModelAccessor;
+import moscow.xaclient.systems.custommodel.model.AbstractCustomModel;
 import moscow.xaclient.systems.modules.modules.visuals.AntiInvisible;
+import moscow.xaclient.systems.modules.modules.visuals.CustomModels;
 import moscow.xaclient.systems.modules.modules.visuals.FriendMarkers;
 import moscow.xaclient.systems.modules.modules.visuals.TotemPop;
 import moscow.xaclient.utility.colors.Colors;
@@ -101,8 +103,23 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, S extend
       int overlay,
       int color,
       Operation<Void> original,
-      @Local(argsOnly = true) S livingEntityRenderState
+      @Local(argsOnly = true) S livingEntityRenderState,
+      @Local(argsOnly = true) net.minecraft.client.render.VertexConsumerProvider vertexConsumerProvider
    ) {
+      if (livingEntityRenderState instanceof net.minecraft.client.render.entity.state.PlayerEntityRenderState playerState) {
+         CustomModels customModels = XaClient.getInstance().getModuleManager().getModule(CustomModels.class);
+         if (customModels.appliesTo(playerState.name)) {
+            AbstractCustomModel customModel = customModels.getModel();
+            Identifier customTexture = customModels.getTexture();
+            if (customModel != null && customTexture != null) {
+               customModel.setAngles(playerState);
+               VertexConsumer customConsumer = vertexConsumerProvider.getBuffer(RenderLayer.getEntityTranslucent(customTexture));
+               customModel.renderCustom(matrixStack, customConsumer, light, overlay, color);
+               return;
+            }
+         }
+      }
+
       if (ANTI_INVISIBLE_MODULE.isEnabled() && ANTI_INVISIBLE_MODULE.shouldModifyOpacity(livingEntityRenderState)) {
          Entity entity = ((EntityRenderStateAddition)livingEntityRenderState).xaclient$getEntity();
          color = entity instanceof ArmorStandEntity

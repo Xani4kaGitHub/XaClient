@@ -7,6 +7,7 @@ import moscow.xaclient.utility.math.MathUtility;
 import moscow.xaclient.utility.time.Timer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.ApiStatus.Internal;
 
@@ -51,12 +52,21 @@ public class RotationHandler implements IMinecraft {
          }
       } else {
          this.state = RotationState.ROTATING;
-         this.currentRotation = RotationMath.correctRotation(
-            new Rotation(
-               this.moveTowardsAngle(this.currentRotation.getYaw(), this.currentTask.getRotation().getYaw(), this.currentTask.getSpeedX()),
-               this.moveTowardsAngle(this.currentRotation.getPitch(), this.currentTask.getRotation().getPitch(), this.currentTask.getSpeedY())
-            )
-         );
+         if (this.currentTask.isSmooth()) {
+            this.currentRotation = RotationMath.correctRotation(
+               new Rotation(
+                  this.smoothTowardsAngle(this.currentRotation.getYaw(), this.currentTask.getRotation().getYaw(), this.currentTask.getSpeedX(), this.currentTask.getSmoothFactor()),
+                  this.smoothTowardsAngle(this.currentRotation.getPitch(), this.currentTask.getRotation().getPitch(), this.currentTask.getSpeedY(), this.currentTask.getSmoothFactor())
+               )
+            );
+         } else {
+            this.currentRotation = RotationMath.correctRotation(
+               new Rotation(
+                  this.moveTowardsAngle(this.currentRotation.getYaw(), this.currentTask.getRotation().getYaw(), this.currentTask.getSpeedX()),
+                  this.moveTowardsAngle(this.currentRotation.getPitch(), this.currentTask.getRotation().getPitch(), this.currentTask.getSpeedY())
+               )
+            );
+         }
       }
    }
 
@@ -89,6 +99,17 @@ public class RotationHandler implements IMinecraft {
       this.rotate(rotation, moveCorrection, yawSpeed, pitchSpeed, returnSpeed, RotationPriority.NORMAL);
    }
 
+   public void rotateSmooth(Rotation rotation, MoveCorrection moveCorrection, float maxStep, float smoothFactor, float returnSpeed, RotationPriority priority) {
+      int priorityValue = priority.getPriority();
+      if (this.currentTask == null || this.currentTask.getPriority() <= priorityValue || this.state != RotationState.ROTATING) {
+         rotation.setYaw(
+            RotationMath.adjustAngle(this.currentTask == null ? this.getPlayerRotation().getYaw() : this.currentTask.getRotation().getYaw(), rotation.getYaw())
+         );
+         this.currentTask = new RotationTask(rotation, moveCorrection, maxStep, maxStep, returnSpeed, priorityValue, true, smoothFactor);
+         this.rotationIdle.reset();
+      }
+   }
+
    public void rotate(Rotation rotation, RotationPriority priority) {
       this.rotate(rotation, MoveCorrection.DIRECT, 180.0F, 180.0F, 180.0F, priority);
    }
@@ -100,6 +121,18 @@ public class RotationHandler implements IMinecraft {
    private float moveTowardsAngle(float current, float target, float speed) {
       float difference = RotationMath.getAngleDifference(current, target);
       return Math.abs(difference) <= speed ? target : current + Math.signum(difference) * speed;
+   }
+
+   private float smoothTowardsAngle(float current, float target, float maxSpeed, float smoothFactor) {
+      float difference = RotationMath.getAngleDifference(current, target);
+      float absDifference = Math.abs(difference);
+      if (absDifference <= 1.0F) {
+         return target;
+      }
+
+      float step = Math.max(1.0F, absDifference * MathHelper.clamp(smoothFactor, 0.05F, 1.0F));
+      step = Math.min(step, maxSpeed);
+      return Math.abs(difference) <= step ? target : current + Math.signum(difference) * step;
    }
 
    public void rotateTowards(Entity entity, long yawSpeed, long pitchSpeed, long returnSpeed, RotationPriority priority, MoveCorrection moveCorrection) {

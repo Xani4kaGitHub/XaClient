@@ -53,6 +53,7 @@
     "minecraft.render.entity.EntityRendererMixin",
     "minecraft.render.entity.EntityRenderStateMixin",
     "minecraft.render.entity.feature.FeatureRendererMixin",
+    "minecraft.render.entity.feature.CapeFeatureRendererMixin",
     "minecraft.render.item.HeldItemRendererMixin",
     "minecraft.world.ClientWorldMixin",
     "minecraft.world.chunk.ClientChunkManagerMixin"
